@@ -690,7 +690,7 @@ def _check(local, config_path, rep, gh, do_build, render, log, remote=False, rep
                 'Run `mdbindery install-tools`, then check again.')
     else:
         from .build import analyze, BuildError
-        work = Path(tempfile.mkdtemp(prefix='mdbindery-analyze-'))
+        work = Path(tempfile.mkdtemp(prefix='mdbindery-analyze-')).resolve()
         try:
             if not render or not tools.command('mmdc'):
                 cfg.opts['mermaid'] = 'placeholder' if cfg.opts['mermaid'] == 'png' else cfg.opts['mermaid']
@@ -739,9 +739,9 @@ def analysis_findings(rep, a, cfg, src, suggested):
             base = e['path'].split('/')[-1]
             ln = line_of(texts.get(name, []), base.replace(' ', '%20')) or line_of(texts.get(name, []), base)
             if not e.get('exists', True) and e['mode'] == 'source_url' and site:
+                page = re.sub(r'(?i)\.md$', '.html', re.sub(r'(?i)readme\.md$', 'index.html', e['path']))
                 rep.add('warning', 'MB203', f"link to {e['path']}, which is not in the repository: it points to "
-                        f"{urljoin(cfg['source_url'], re.sub(r'(?i)\.md$', '.html', re.sub(r'(?i)readme\.md$', 'index.html', e['path'])))} "
-                        "(not checked)", 'Make sure the page exists on the website.',
+                        f"{urljoin(cfg['source_url'], page)} (not checked)", 'Make sure the page exists on the website.',
                         name, ln)
             elif not e.get('exists', True):
                 hint = (' If it is a page of the published website, set source_url to the web address of the '

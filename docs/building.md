@@ -241,7 +241,7 @@ When mermaid-cli is not installed (after `install-tools --no-node`) and `options
 
 ### epubcheck
 
-EPUBCheck runs as `java -jar epubcheck.jar <epub> --json reports/epubcheck.json -q`. The log line is `EPUBCheck: no messages`, or the count per severity followed by the first 50 messages:
+EPUBCheck runs as `java -jar epubcheck.jar book.epub --json epubcheck.json -q` on a copy of the EPUB in a temporary folder, because Java on Windows reads command-line paths in the system code page and would break on names such as `Книга.epub`; the report is then copied to `reports/epubcheck.json`. The log line is `EPUBCheck: no messages`, or the count per severity followed by the first 50 messages:
 
 ```
   EPUBCheck: {'ERROR': 1}

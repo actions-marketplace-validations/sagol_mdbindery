@@ -23,10 +23,10 @@ class BuildError(Exception):
     pass
 
 
-def run(cmd, env=None, check=True):
+def run(cmd, env=None, check=True, cwd=None):
     """Run a command (never through a shell)."""
     try:
-        r = subprocess.run([str(c) for c in cmd], env=env or tools.tool_env(), text=True,
+        r = subprocess.run([str(c) for c in cmd], env=env or tools.tool_env(), text=True, cwd=cwd,
                            capture_output=True, encoding='utf-8', errors='replace')
     except OSError as e:
         raise BuildError(f'cannot run {cmd[0]}: {e}')
@@ -150,6 +150,7 @@ def analyze(cfg, work, log=print, skip_missing=False):
     if not cfg['files']:
         raise BuildError('no Markdown files in the reading order (MB100): add chapters or list them under files:')
     lua = DATA / 'book.lua'
+    work = Path(work).resolve()  # macOS: /var is a link to /private/var; paths must compare equal
     src = cfg.source
     repo_root = Path(cfg.repo_root).resolve()
     files = cfg['files']
@@ -403,7 +404,15 @@ def gate_epubcheck(epub, reports, log, required=True):
     rj = reports / 'epubcheck.json'
     if rj.exists():
         rj.unlink()
-    r = run(cmd + [epub, '--json', rj, '-q'], check=False)
+    # Java reads command-line paths in the system code page (Windows): run it on ASCII names in a temp folder
+    tmp = Path(tempfile.mkdtemp(prefix='mdbindery-epubcheck-'))
+    try:
+        shutil.copyfile(epub, tmp / 'book.epub')
+        r = run(cmd + ['book.epub', '--json', 'epubcheck.json', '-q'], check=False, cwd=tmp)
+        if (tmp / 'epubcheck.json').is_file():
+            shutil.copyfile(tmp / 'epubcheck.json', rj)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
     try:
         data = json.loads(rj.read_text(encoding='utf-8'))
         if 'checker' not in data:
@@ -541,7 +550,7 @@ def build(cfg, out_dir=None, run_ace=True, keep_work=False, log=print):
     reports = out_dir / 'reports'
     reports.mkdir(parents=True, exist_ok=True)
     clear_reports(reports)  # stale reports from an earlier build would mislead
-    work = Path(tempfile.mkdtemp(prefix='mdbindery-'))
+    work = Path(tempfile.mkdtemp(prefix='mdbindery-')).resolve()
     n = len(cfg['files'])
     log(f"mdbindery: {slug} ({n} file{'s' if n != 1 else ''}) from {cfg.source}")
     for w in cfg.warnings:
