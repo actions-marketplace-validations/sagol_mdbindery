@@ -84,6 +84,18 @@ jobs:
               --title "mdbindery $VERSION" --notes-file notes.md --verify-tag
           fi
 
+  install-test:
+    needs: [build, github-release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.build.outputs.tag }}
+        run: gh workflow run install-public.yml -R "$GITHUB_REPOSITORY" --ref main -f ref="$TAG"
+
   pypi:
     needs: build
     if: vars.PUBLISH_PYPI == 'true'

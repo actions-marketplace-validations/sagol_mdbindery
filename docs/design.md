@@ -463,7 +463,7 @@ The one-line form (download from `main` through `curl | bash` or `irm | iex`) is
 6. Push and wait for the `ci` workflow (tests, installers, and the Action on all systems).
 7. Tag the release (`vX.Y.Z`) and push the tag. The `release` workflow builds the wheel and source archive, checks that their version matches the tag, and creates the GitHub release with the packages, both installers, and the CHANGELOG entry as notes. When the repository variable `PUBLISH_PYPI` is `true`, it also publishes to PyPI through trusted publishing (the `pypi` environment; the PyPI project trusts `sagol/mdbindery`, workflow `release.yml`). To publish an existing tag again, run the workflow by hand with that tag.
 8. Update the Homebrew formula in `sagol/homebrew-tap` (`Formula/mdbindery.rb`): the source archive URL from the release and its SHA-256 (`shasum -a 256`). The tap's own CI installs and tests the formula on macOS and Linux.
-9. The `install-public` workflow runs on every published release: the one-line installers from the README on Linux, macOS, and Windows, then a check and build of the sample book. Watch it pass.
+9. The release workflow then starts `install-public` with the new tag: the one-line installers taken from that tag (with `--ref`/`-Ref`) on Linux, macOS, and Windows, then a check and build of the sample book. Watch it pass. It can also be run by hand for `main` or any tag.
 10. Users of the Action pick the new version by changing `uses: sagol/mdbindery@vX.Y.Z`; `install.sh --ref vX.Y.Z` and `install.ps1 -Ref vX.Y.Z` install that tag.
 
 ## Known limitations

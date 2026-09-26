@@ -1,10 +1,13 @@
 name: install-public
 
-# runs the one-line installers from the README against the published repository
+# runs the one-line installers from the README against the published repository;
+# the release workflow starts it with the new tag
 on:
   workflow_dispatch:
-  release:
-    types: [published]
+    inputs:
+      ref:
+        description: branch or tag to install (main, or a release tag such as v0.1.0)
+        default: main
 
 permissions:
   contents: read
@@ -17,23 +20,25 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
+    env:
+      REF: ${{ inputs.ref || 'main' }}
     steps:
       - name: Install (Linux, macOS)
         if: runner.os != 'Windows'
         run: |
-          curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/main/install/install.sh | bash
+          curl -fsSL "https://raw.githubusercontent.com/sagol/mdbindery/$REF/install/install.sh" | bash -s -- --ref "$REF"
           ~/.local/bin/mdbindery doctor
       - name: Install (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          irm https://raw.githubusercontent.com/sagol/mdbindery/main/install/install.ps1 | iex
+          & ([scriptblock]::Create((irm "https://raw.githubusercontent.com/sagol/mdbindery/$env:REF/install/install.ps1"))) -Ref $env:REF
           & "$env:USERPROFILE\.local\bin\mdbindery.exe" doctor
           if ($LASTEXITCODE -ne 0) { exit 1 }
       - name: Quick start on the sample book
         shell: bash
         run: |
-          git clone -q https://github.com/sagol/mdbindery
+          git clone -q --branch "$REF" https://github.com/sagol/mdbindery
           cd mdbindery/examples/sample-book
           export PATH="$HOME/.local/bin:$USERPROFILE/.local/bin:$PATH"
           mdbindery check . --build
