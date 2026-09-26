@@ -1,0 +1,13 @@
+# Russian fixture: Cyrillic anchors, «quotes», em dashes, footnotes,
+# a non-numeric citation label, a scene break, a Mermaid chart, auto file list.
+metadata:
+  title: Пробная книга
+  subtitle: Проверка сборки EPUB
+  authors: [Автор Проверочный]
+  lang: ru
+  identifier: urn:uuid:00000000-0000-4000-8000-000000000001
+  date: 2026-09-26
+  rights: CC BY 4.0
+options:
+  mermaid_alt_prefix: Схема
+  citation_labels: all

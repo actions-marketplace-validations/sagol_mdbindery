@@ -1,0 +1,37 @@
+# mdbindery configuration for the sample book
+slug: writing-a-book-in-markdown
+output_dir: dist
+source_url: https://github.com/sagol/mdbindery/blob/main/examples/sample-book/
+
+metadata:
+  title: Writing a Book in Markdown
+  subtitle: A small sample book for mdbindery
+  authors: [Sample Author]
+  lang: en-US
+  identifier: urn:uuid:5f0f1c2e-8a4b-4d6e-9c1a-3b7e2d9f0a11
+  date: 2026-09-26
+  rights: Text and images licensed under CC BY 4.0
+  description: A short book that demonstrates every feature of mdbindery.
+  subjects: [Markdown, EPUB, Publishing]
+
+cover:
+  image: images/cover.jpg
+
+files:
+  - file: README.md
+    role: front
+    title: About this book
+    drop_sections: [Contributing]
+  - 01-why-markdown.md
+  - 02-structure.md
+  - 03-publishing.md
+  - file: appendix-a-checklist.md
+    role: appendix
+
+options:
+  citations: refdefs
+  toc_depth: 2
+  cards:
+    files: [appendix-a-checklist.md]
+    min_columns: 9
+    title_columns: 2

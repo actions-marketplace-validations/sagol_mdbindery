@@ -1,0 +1,145 @@
+/* mdbindery default stylesheet. Reflowable: sizes in em, fonts left to the reader
+   except headings; works in Apple Books, Kobo, Google Play Books, Thorium, Kindle. */
+
+@namespace epub "http://www.idpf.org/2007/ops";
+
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0 3%;
+  line-height: 1.45;
+  text-align: left;
+  hyphens: auto; -webkit-hyphens: auto; -epub-hyphens: auto;
+  widows: 2; orphans: 2;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: sans-serif;
+  line-height: 1.2;
+  hyphens: manual; -webkit-hyphens: manual; -epub-hyphens: manual;
+  page-break-after: avoid; break-after: avoid;
+  text-align: left;
+}
+h1 { font-size: 1.6em; margin: 1.5em 0 1em; }
+h2 { font-size: 1.25em; margin: 1.6em 0 0.6em; }
+h3 { font-size: 1.08em; margin: 1.3em 0 0.4em; }
+h4, h5, h6 { font-size: 1em; margin: 1.1em 0 0.3em; }
+
+p { margin: 0 0 0.7em; }
+a { color: inherit; text-decoration: underline; text-decoration-thickness: 0.05em; }
+em { font-style: italic; }
+strong { font-weight: bold; }
+
+/* "Assumption:" and other block quotes: a tinted aside */
+blockquote {
+  margin: 1em 0;
+  padding: 0.5em 0.9em;
+  border-left: 0.25em solid #c8643b;
+  background: #f6f2ea; color: #1a1a1a;  /* a fixed pair stays readable in night themes */
+}
+blockquote p:last-child { margin-bottom: 0; }
+
+ul, ol { margin: 0.4em 0 0.8em; padding-left: 1.6em; }
+li { margin: 0.15em 0; }
+
+code, pre { font-family: monospace; font-size: 0.88em; }
+pre {
+  white-space: pre-wrap; word-wrap: break-word;
+  padding: 0.6em; background: #f4f4f4; color: #1a1a1a; border-radius: 0.2em;
+}
+
+/* tables */
+table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  font-size: 0.85em;
+  line-height: 1.3;
+  width: 100%;
+}
+th, td {
+  border: 1px solid #b8b8b8;
+  padding: 0.3em 0.4em;
+  vertical-align: top;
+  text-align: left;
+}
+th { background: #ececec; color: #1a1a1a; font-weight: bold; }
+caption { caption-side: top; font-style: italic; margin-bottom: 0.3em; }
+
+/* very wide tables rendered as cards (one block per row) */
+div.cards { margin: 1em 0; }
+div.card {
+  margin: 0 0 0.9em;
+  padding: 0.5em 0.7em;
+  border: 1px solid #c9c9c9;
+  border-radius: 0.25em;
+  page-break-inside: avoid; break-inside: avoid;
+}
+div.card > p { margin: 0 0 0.25em; }
+div.card > p:first-child { margin-bottom: 0.45em; }
+div.card dl { margin: 0; font-size: 0.9em; }
+div.card dt { font-weight: bold; margin-top: 0.35em; }
+div.card dd { margin: 0 0 0 1em; }
+div.card dd p { margin: 0; }
+
+/* visible reference lists built from Markdown reference definitions */
+div.references ul { list-style: none; padding-left: 0; font-size: 0.9em; }
+div.references li { margin: 0 0 0.45em; padding-left: 2.2em; text-indent: -2.2em; }
+div.references a { word-break: break-all; overflow-wrap: anywhere; }
+
+/* figures and images */
+figure { margin: 1em 0; text-align: center; }
+img { max-width: 100%; height: auto; }
+img.inline { max-height: 1.4em; width: auto; vertical-align: text-bottom; }
+figcaption { font-size: 0.9em; font-style: italic; margin-top: 0.3em; }
+
+/* scene breaks (fiction) and horizontal rules */
+hr {
+  border: none; text-align: center; margin: 1.2em 0;
+  height: 1.2em; overflow: visible;
+}
+hr::after { content: "\2042"; font-size: 1em; }
+
+/* pandoc title page and table of contents */
+section.titlepage, header#title-block-header { text-align: center; margin-top: 20%; }
+section.titlepage h1, section.titlepage p, section.titlepage div,
+header#title-block-header h1, header#title-block-header p { text-align: center; }
+section.titlepage .title, header#title-block-header .title { font-family: sans-serif; font-size: 2em; margin-bottom: 0.3em; }
+section.titlepage .subtitle, header#title-block-header .subtitle { font-size: 1.2em; font-style: italic; margin-bottom: 1.5em; }
+section.titlepage .author, header#title-block-header .author { font-size: 1.1em; }
+nav#toc ol, nav ol { list-style: none; padding-left: 1em; }
+nav a { text-decoration: none; }
+
+/* footnotes / endnotes */
+section.footnotes, aside.footnote { font-size: 0.88em; }
+section.footnotes > hr { height: auto; border: none; border-top: 1px solid #999; width: 30%; margin: 1.5em 0 0.8em; }
+section.footnotes > hr::after { content: none; }
+a.footnote-ref { vertical-align: super; font-size: 0.75em; text-decoration: none; }
+a.footnote-back { text-decoration: none; font-weight: bold; }
+aside.footnote { margin: 0 0 0.5em; }
+
+/* figures with captions: image title in Markdown becomes the caption */
+figure img { display: block; margin: 0 auto; }
+
+/* full-page images: "full-page" (optionally ": caption") as the image title */
+div.full-page {
+  page-break-before: always; break-before: page;
+  page-break-after: always; break-after: page;
+  text-align: center; margin: 0; padding: 0;
+}
+div.full-page figure { margin: 0; }
+div.full-page img { max-height: 92vh; max-width: 100%; width: auto; }
+
+/* GitHub alerts: > [!NOTE], [!TIP], [!IMPORTANT], [!WARNING], [!CAUTION] */
+div.note, div.tip, div.important, div.warning, div.caution {
+  margin: 1em 0; padding: 0.5em 0.9em;
+  border-left: 0.25em solid #4a78c2; background: #eef3fb; color: #1a1a1a;
+}
+div.tip { border-left-color: #3a8a4f; background: #edf7ef; }
+div.important { border-left-color: #7b52c4; background: #f3eefb; }
+div.warning { border-left-color: #c2881f; background: #fbf5e9; }
+div.caution { border-left-color: #c24a3a; background: #fbecea; }
+div.note > div.title p, div.tip > div.title p, div.important > div.title p,
+div.warning > div.title p, div.caution > div.title p { font-weight: bold; font-size: 1em; margin: 0 0 0.2em; }
+
+span.small { font-size: 0.85em; }
+span.mark, mark { background: #fff2a8; color: #1a1a1a; }
+span.missing-image { font-style: italic; }

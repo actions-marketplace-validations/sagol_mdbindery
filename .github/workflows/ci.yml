@@ -1,0 +1,99 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-latest, python: '3.12'}
+          - {os: ubuntu-latest, python: '3.9'}
+          - {os: macos-latest, python: '3.12'}
+          - {os: windows-latest, python: '3.12'}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    env:
+      MDBINDERY_REQUIRE_TOOLS: '1'   # a missing tool fails the tests instead of skipping them
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install mdbindery
+        run: python -m pip install -e ".[test]"
+      - name: Install tools
+        run: mdbindery install-tools
+      - name: Doctor
+        run: mdbindery doctor
+      - name: Tests
+        run: python -m pytest -v
+      - name: Build the sample book
+        run: mdbindery build examples/sample-book
+      - name: Build from a folder and temp folder with non-ASCII names and spaces
+        run: python tests/ci_unicode_paths.py
+      - name: Check the broken fixture (must report errors)
+        shell: bash
+        run: |
+          set +e
+          mdbindery check tests/fixtures/broken-book --json broken.json -q
+          code=$?
+          test "$code" = "1" || { echo "expected exit 1, got $code"; exit 1; }
+      - name: Check a repository by git URL
+        shell: bash
+        run: |
+          set +e
+          mdbindery check "file://$GITHUB_WORKSPACE" --no-render -q --report url-check.md
+          code=$?
+          head -5 url-check.md
+          test "$code" = "0" -o "$code" = "1" || { echo "unexpected exit $code"; exit 1; }
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        if: always()
+        with:
+          name: sample-book-${{ matrix.os }}-${{ matrix.python }}
+          path: examples/sample-book/dist/
+
+  installers:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - name: Installer (Linux, macOS)
+        if: runner.os != 'Windows'
+        run: |
+          bash install/install.sh --local . --no-node
+          ~/.local/bin/mdbindery doctor
+          ~/.local/bin/mdbindery build examples/sample-book --no-ace
+          bash install/install.sh --uninstall
+          test ! -e ~/.local/bin/mdbindery
+      - name: Installer (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          ./install/install.ps1 -Local . -NoNode
+          & "$env:USERPROFILE\.local\bin\mdbindery.exe" doctor
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          & "$env:USERPROFILE\.local\bin\mdbindery.exe" build examples/sample-book --no-ace
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          ./install/install.ps1 -Uninstall
+          if (Test-Path "$env:USERPROFILE\.local\bin\mdbindery.exe") { exit 1 }
+      - name: Installer (Windows PowerShell 5.1)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          ./install/install.ps1 -Local . -NoTools
+          & "$env:USERPROFILE\.local\bin\mdbindery.exe" --version
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          ./install/install.ps1 -Uninstall

@@ -1,0 +1,10 @@
+metadata:
+  title: Broken Book
+  lang: en-US
+files:
+  - 01-intro.md
+  - 02-body.md
+  - 03-latin.md
+  - 04-gone.md
+options:
+  toc_dept: 2
