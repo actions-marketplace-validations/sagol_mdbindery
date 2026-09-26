@@ -48,9 +48,27 @@ Windows (PowerShell):
 irm https://raw.githubusercontent.com/sagol/mdbindery/main/install/install.ps1 | iex
 ```
 
-These commands download from the public GitHub repository `sagol/mdbindery`. From a checkout of the repository, run `bash install/install.sh --local .` (on Windows, `powershell -ExecutionPolicy Bypass -File .\install\install.ps1 -Local .`) instead.
+The installer needs nothing preinstalled. It fetches [uv](https://github.com/astral-sh/uv), installs mdbindery in an isolated environment (with its own Python if needed), then downloads pandoc, EPUBCheck, a Java runtime if none is present, Node.js, mermaid-cli, and Ace into a per-user folder. pandoc, EPUBCheck, Node.js, and uv are pinned to exact versions and verified against SHA-256 checksums; the Java runtime comes from Eclipse Temurin's API with its published checksum; mermaid-cli and Ace are pinned by version. Nothing needs administrator rights, and nothing asks questions, so the same commands work in scripts and CI.
 
-The installer needs nothing preinstalled. It fetches [uv](https://github.com/astral-sh/uv), installs mdbindery in an isolated environment (with its own Python if needed), then downloads pandoc, EPUBCheck, a Java runtime if none is present, Node.js, mermaid-cli, and Ace into a per-user folder. pandoc, EPUBCheck, Node.js, and uv are pinned to exact versions and verified against SHA-256 checksums; the Java runtime comes from Eclipse Temurin's API with its published checksum; mermaid-cli and Ace are pinned by version. Nothing needs administrator rights. Details, options, manual installation, and uninstalling: [docs/installation.md](docs/installation.md).
+To pin a release, pass its tag: `curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/v0.1.0/install/install.sh | bash -s -- --ref v0.1.0`.
+
+Other ways to install:
+
+| Channel | Command |
+|---|---|
+| PyPI (pipx, uv, pip) | `pipx install mdbindery` or `uv tool install mdbindery`, then `mdbindery install-tools` |
+| Homebrew (macOS, Linux) | `brew install sagol/tap/mdbindery`, then `mdbindery install-tools` |
+| GitHub Actions | `- uses: sagol/mdbindery@v0.1.0`, then run `mdbindery` in later steps |
+| Release files | wheel, source archive, and both installers on the [releases page](https://github.com/sagol/mdbindery/releases) |
+
+In a workflow:
+
+```yaml
+- uses: sagol/mdbindery@v0.1.0      # installs mdbindery and its tools, cached between runs
+- run: mdbindery build path/to/book  # exit 1 when a gate fails
+```
+
+Details, options, manual installation, and uninstalling: [docs/installation.md](https://github.com/sagol/mdbindery/blob/main/docs/installation.md).
 
 ## Quick start
 
@@ -73,7 +91,7 @@ mdbindery build
 mdbindery preview dist/writing-a-book-in-markdown.epub shots
 ```
 
-The full walk-through is in [docs/tutorial.md](docs/tutorial.md).
+The full walk-through is in [docs/tutorial.md](https://github.com/sagol/mdbindery/blob/main/docs/tutorial.md).
 
 ## Requirements
 
@@ -85,18 +103,18 @@ The full walk-through is in [docs/tutorial.md](docs/tutorial.md).
 
 | Document | Contents |
 |---|---|
-| [Tutorial](docs/tutorial.md) | From an existing repository to a validated EPUB, step by step |
-| [Book structure rules](docs/book-structure.md) | Files, headings, links, citations, images (cover, inline, figures, full-page), tables, charts |
-| [Configuration](docs/configuration.md) | Every `mdbindery.yaml` key |
-| [Checking](docs/checking.md) | `mdbindery check`, the report, and every check code with its fix |
-| [Building](docs/building.md) | The pipeline, outputs, gates, reproducibility, covers, preview, uploading to stores |
-| [Installation](docs/installation.md) | Linux, macOS, Windows, manual and offline setups, updating, uninstalling |
-| [Troubleshooting](docs/troubleshooting.md) | Common errors and what to do |
-| [Design](docs/design.md) | How it works inside, for contributors |
+| [Tutorial](https://github.com/sagol/mdbindery/blob/main/docs/tutorial.md) | From an existing repository to a validated EPUB, step by step |
+| [Book structure rules](https://github.com/sagol/mdbindery/blob/main/docs/book-structure.md) | Files, headings, links, citations, images (cover, inline, figures, full-page), tables, charts |
+| [Configuration](https://github.com/sagol/mdbindery/blob/main/docs/configuration.md) | Every `mdbindery.yaml` key |
+| [Checking](https://github.com/sagol/mdbindery/blob/main/docs/checking.md) | `mdbindery check`, the report, and every check code with its fix |
+| [Building](https://github.com/sagol/mdbindery/blob/main/docs/building.md) | The pipeline, outputs, gates, reproducibility, covers, preview, uploading to stores |
+| [Installation](https://github.com/sagol/mdbindery/blob/main/docs/installation.md) | Linux, macOS, Windows, manual and offline setups, updating, uninstalling |
+| [Troubleshooting](https://github.com/sagol/mdbindery/blob/main/docs/troubleshooting.md) | Common errors and what to do |
+| [Design](https://github.com/sagol/mdbindery/blob/main/docs/design.md) | How it works inside, for contributors |
 
 ## For AI coding agents
 
-[`skills/mdbindery-prepare-repo/SKILL.md`](skills/mdbindery-prepare-repo/SKILL.md) teaches an LLM agent (Claude Code, Codex, Cursor, and similar) how to restructure a repository for mdbindery and loop on `mdbindery check` until it is clean. [`skills/mdbindery/SKILL.md`](skills/mdbindery/SKILL.md) covers running the tool: installing, checking, building, previewing, and reading the reports. Both are plain Markdown and can be copied into any agent's skill or rules folder.
+[`skills/mdbindery-prepare-repo/SKILL.md`](https://github.com/sagol/mdbindery/blob/main/skills/mdbindery-prepare-repo/SKILL.md) teaches an LLM agent (Claude Code, Codex, Cursor, and similar) how to restructure a repository for mdbindery and loop on `mdbindery check` until it is clean. [`skills/mdbindery/SKILL.md`](https://github.com/sagol/mdbindery/blob/main/skills/mdbindery/SKILL.md) covers running the tool: installing, checking, building, previewing, and reading the reports. Both are plain Markdown and can be copied into any agent's skill or rules folder.
 
 ## Credits
 
@@ -104,4 +122,4 @@ mdbindery orchestrates [pandoc](https://pandoc.org), [EPUBCheck](https://www.w3.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](https://github.com/sagol/mdbindery/blob/main/LICENSE).

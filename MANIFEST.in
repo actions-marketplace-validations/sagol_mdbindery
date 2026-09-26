@@ -1,0 +1,5 @@
+include CHANGELOG.md
+graft tests
+graft examples
+global-exclude __pycache__ *.py[cod]
+prune examples/*/dist

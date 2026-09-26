@@ -1,0 +1,78 @@
+name: Install mdbindery
+description: Install mdbindery and its tools (pandoc, EPUBCheck, Java, Node.js, mermaid-cli, Ace) to check and build EPUBs from Markdown
+author: Taras Baranyuk
+branding:
+  icon: book-open
+  color: orange
+
+inputs:
+  version:
+    description: >
+      mdbindery to install: empty for the version of this action (the ref in `uses:`), a PyPI version
+      such as 0.1.0, or a git ref of sagol/mdbindery such as main.
+    default: ''
+  node:
+    description: Install Node.js, mermaid-cli, and Ace (charts, the accessibility check, preview). 'false' is faster.
+    default: 'true'
+  java:
+    description: 'Java runtime for EPUBCheck: auto (download only if no Java 11+ is found), always, or never.'
+    default: auto
+  cache:
+    description: Cache the downloaded tools between workflow runs.
+    default: 'true'
+
+outputs:
+  home:
+    description: The tool home (also exported as MDBINDERY_HOME).
+    value: ${{ steps.setup.outputs.home }}
+
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
+      with:
+        enable-cache: false
+
+    - id: setup
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        ACTION_PATH: ${{ github.action_path }}
+        NODE: ${{ inputs.node }}
+        JAVA: ${{ inputs.java }}
+      run: |
+        home="$RUNNER_TOOL_CACHE/mdbindery"
+        echo "MDBINDERY_HOME=$home" >> "$GITHUB_ENV"
+        echo "home=$home" >> "$GITHUB_OUTPUT"
+        if [[ -z "$VERSION" ]]; then
+          spec="$ACTION_PATH"
+          key=$(sed -n 's/^__version__ = "\([^"]*\)".*/\1/p' "$ACTION_PATH/src/mdbindery/__init__.py")
+        elif [[ "$VERSION" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
+          spec="mdbindery==$VERSION"; key="$VERSION"
+        else
+          spec="mdbindery @ https://github.com/sagol/mdbindery/archive/$VERSION.zip"; key="$VERSION"
+        fi
+        echo "spec=$spec" >> "$GITHUB_OUTPUT"
+        echo "key=mdbindery-tools-${RUNNER_OS}-${RUNNER_ARCH}-${key}-node${NODE}-java${JAVA}" >> "$GITHUB_OUTPUT"
+
+    - if: inputs.cache == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+      with:
+        path: ${{ steps.setup.outputs.home }}/tools
+        key: ${{ steps.setup.outputs.key }}
+
+    - shell: bash
+      env:
+        SPEC: ${{ steps.setup.outputs.spec }}
+      run: |
+        uv tool install --force --python 3.12 "$SPEC"
+        uv tool dir --bin >> "$GITHUB_PATH"
+
+    - shell: bash
+      env:
+        NODE: ${{ inputs.node }}
+        JAVA: ${{ inputs.java }}
+      run: |
+        args=(install-tools --java "$JAVA")
+        [[ "$NODE" == "true" ]] || args+=(--no-node)
+        mdbindery "${args[@]}"

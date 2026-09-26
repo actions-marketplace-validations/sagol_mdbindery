@@ -33,6 +33,8 @@ The installer needs nothing preinstalled and no admin rights. It fetches uv, ins
 - `install.sh` options: `--no-node` (no Node.js, mermaid-cli, or Ace: charts become placeholders, no accessibility check, no `preview`), `--java auto|always|never`, `--no-tools` (command only), `--local PATH` (install from a checkout), `--ref REF` (branch, tag, or commit), `--uninstall`, `--help`. PowerShell: `-NoNode`, `-Java`, `-NoTools`, `-Local`, `-Ref`, `-Uninstall`. Pass options through the pipe with `curl -fsSL .../install.sh | bash -s -- --no-node`.
 - Update mdbindery: run the installer again. Add or repair tools: `mdbindery install-tools [--no-node] [--java auto|always|never] [--force]`. `install-tools` exits with 1 when pandoc or EPUBCheck is still missing; Node.js, mermaid-cli, and Ace failures are only warnings.
 - The full install takes about 1.5 GB; with `--no-node`, about 370 MB including uv and Python (measured sizes are in `docs/installation.md`). Building works offline afterwards.
+- Other channels install the same command; run `mdbindery install-tools` after them: `pipx install mdbindery` or `uv tool install mdbindery` (PyPI), `brew install sagol/tap/mdbindery` (Homebrew). Pin with `mdbindery==X.Y.Z`, or with `--ref vX.Y.Z` on the installer taken from that tag.
+- In GitHub Actions, `- uses: sagol/mdbindery@vX.Y.Z` installs mdbindery and its tools (cached between runs) and puts `mdbindery` on `PATH`; inputs `node` (`'false'` skips Node.js, mermaid-cli, and Ace), `java`, `version`, `cache`.
 
 ## Verify with doctor
 

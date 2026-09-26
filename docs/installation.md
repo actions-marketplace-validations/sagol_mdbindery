@@ -60,6 +60,66 @@ powershell -ExecutionPolicy Bypass -File .\install\install.ps1 -Local .
 
 When the installer finishes, open a new terminal and run `mdbindery doctor` (see [Verifying the installation](#verifying-the-installation)).
 
+### A fixed version
+
+The commands above install the latest code on `main`. To install a release, take the installer from its tag and pass the same tag as `--ref` (`-Ref` on Windows):
+
+```
+curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/v0.1.0/install/install.sh | bash -s -- --ref v0.1.0
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/sagol/mdbindery/v0.1.0/install/install.ps1))) -Ref v0.1.0
+```
+
+The installers never ask questions and exit with a non-zero status when a step fails, so they can run unattended in provisioning scripts and CI.
+
+## Package managers and CI
+
+Every channel installs the same `mdbindery` command. The external tools always come from `mdbindery install-tools`, which puts them in the tool home described above; the one-line installers run it for you, the other channels leave it to you.
+
+| Channel | Install | Update |
+|---|---|---|
+| PyPI with pipx | `pipx install mdbindery` | `pipx upgrade mdbindery` |
+| PyPI with uv | `uv tool install mdbindery` | `uv tool upgrade mdbindery` |
+| PyPI with pip | `python -m pip install mdbindery` (in a virtual environment) | `python -m pip install -U mdbindery` |
+| Homebrew (macOS, Linux) | `brew install sagol/tap/mdbindery` | `brew upgrade mdbindery` |
+| A release's files | the wheel or source archive from the [releases page](https://github.com/sagol/mdbindery/releases): `pipx install ./mdbindery-0.1.0-py3-none-any.whl` | install the newer file |
+
+After any of these, run:
+
+```
+mdbindery install-tools
+mdbindery doctor
+```
+
+To pin a version: `pipx install mdbindery==0.1.0`, `uv tool install mdbindery==0.1.0`.
+
+### GitHub Actions
+
+The repository is also a GitHub Action. It installs mdbindery with uv, runs `mdbindery install-tools`, puts `mdbindery` on `PATH`, sets `MDBINDERY_HOME`, and caches the tools between runs, on Linux, macOS, and Windows runners:
+
+```yaml
+jobs:
+  ebook:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: sagol/mdbindery@v0.1.0
+      - run: mdbindery check . --build
+      - run: mdbindery build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: epub
+          path: dist/
+```
+
+| Input | Default | Meaning |
+|---|---|---|
+| `version` | the ref in `uses:` | Another mdbindery to install: a PyPI version such as `0.1.0`, or a git ref of `sagol/mdbindery` such as `main`. |
+| `node` | `true` | Install Node.js, mermaid-cli, and Ace. `false` is faster; charts then become placeholders, the Ace gate warns, and `preview` does not work. |
+| `java` | `auto` | Passed to `install-tools --java`: `auto`, `always`, or `never`. GitHub's runners have Java, so `auto` downloads nothing. |
+| `cache` | `true` | Cache `<tool home>/tools` with `actions/cache`, keyed by runner OS, architecture, mdbindery version, and the two inputs above. |
+
+The output `home` is the tool home (`$RUNNER_TOOL_CACHE/mdbindery`). The build's exit status fails the job when a gate fails (1) or the input is wrong (2).
+
 ## What the installer does
 
 `install.sh` and `install.ps1` follow the same steps.
@@ -347,6 +407,7 @@ python     3.12.14 (PyYAML 6.0.3, Pillow 12.3.0)
 ## Updating
 
 - One-line install: run the same installer command again. It reinstalls mdbindery from `main` (or from `--ref`), then `install-tools` downloads only the components whose pinned version changed.
+- PyPI or Homebrew: `pipx upgrade mdbindery`, `uv tool upgrade mdbindery`, or `brew upgrade mdbindery`, then `mdbindery install-tools`.
 - Manual install: update the checkout (`git pull`) and reinstall the package the way you installed it (`pipx install --force .`, `uv tool install --force .`, or `pip install .` in the venv), then run `mdbindery install-tools`.
 - `mdbindery install-tools --force` downloads every component again, including a Java runtime downloaded earlier.
 - The downloaded JRE is marked with its major version only (21), and `--java auto` keeps using any working Java. To refresh a downloaded JRE, run `mdbindery install-tools --java always --force`.
@@ -376,4 +437,4 @@ Not removed:
 - The bin folder itself, and any `PATH` line you added to a shell profile.
 - A uv you installed yourself.
 
-Installed manually: uninstall the package (`pipx uninstall mdbindery`, `uv tool uninstall mdbindery`, or delete the venv), then delete the tool home folder.
+Installed from PyPI, Homebrew, or manually: uninstall the package (`pipx uninstall mdbindery`, `uv tool uninstall mdbindery`, `brew uninstall mdbindery`, or delete the venv), then delete the tool home folder.

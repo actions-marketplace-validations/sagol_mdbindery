@@ -77,3 +77,7 @@ Keep the book rules in [docs/book-structure.md](docs/book-structure.md), the che
 ## Commit messages
 
 Short and plain, in the imperative, lowercase is fine: `check: report unclosed includes`. One or two lines; add a body only when the reason is not obvious from the diff.
+
+## Releases
+
+Follow the release checklist in [docs/design.md](docs/design.md#release-checklist): a `vX.Y.Z` tag builds the packages and the GitHub release, then the Homebrew formula is updated by hand.

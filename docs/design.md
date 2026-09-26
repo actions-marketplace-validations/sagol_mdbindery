@@ -460,11 +460,11 @@ The one-line form (download from `main` through `curl | bash` or `irm | iex`) is
 3. If tool versions changed, follow [the bump procedure](#installer-and-pinned-versions) and update [installation.md](installation.md).
 4. Check that [book-structure.md](book-structure.md), [checking.md](checking.md), [configuration.md](configuration.md), and the two skills under `skills/` match the code (rules, check codes, keys, defaults, commands).
 5. Locally: `MDBINDERY_REQUIRE_TOOLS=1 python -m pytest`; build a copy of `examples/sample-book` with Ace enabled and get `BUILD OK`; run `mdbindery check tests/fixtures/broken-book` and get exit status 1.
-6. Push and wait for both CI jobs on all systems.
-7. Tag the release (`vX.Y.Z`) and push the tag. `install.sh --ref vX.Y.Z` and `install.ps1 -Ref vX.Y.Z` install that tag.
-8. On a clean machine or container per system, run the one-line installer with the tag (`curl -fsSL .../install.sh | bash -s -- --ref vX.Y.Z`), then `mdbindery doctor` and a build of the sample book.
-
-There is no PyPI publishing step; the installers and manual installs take the source from GitHub.
+6. Push and wait for the `ci` workflow (tests, installers, and the Action on all systems).
+7. Tag the release (`vX.Y.Z`) and push the tag. The `release` workflow builds the wheel and source archive, checks that their version matches the tag, and creates the GitHub release with the packages, both installers, and the CHANGELOG entry as notes. When the repository variable `PUBLISH_PYPI` is `true`, it also publishes to PyPI through trusted publishing (the `pypi` environment; the PyPI project trusts `sagol/mdbindery`, workflow `release.yml`). To publish an existing tag again, run the workflow by hand with that tag.
+8. Update the Homebrew formula in `sagol/homebrew-tap` (`Formula/mdbindery.rb`): the source archive URL from the release and its SHA-256 (`shasum -a 256`). The tap's own CI installs and tests the formula on macOS and Linux.
+9. The `install-public` workflow runs on every published release: the one-line installers from the README on Linux, macOS, and Windows, then a check and build of the sample book. Watch it pass.
+10. Users of the Action pick the new version by changing `uses: sagol/mdbindery@vX.Y.Z`; `install.sh --ref vX.Y.Z` and `install.ps1 -Ref vX.Y.Z` install that tag.
 
 ## Known limitations
 

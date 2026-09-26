@@ -12,4 +12,5 @@ First public release.
 - `mdbindery check`: a dry run for a local folder, a GitHub URL, or another git URL, with a Markdown or JSON report (MB codes, file, line, and a fix for each finding), a suggested configuration, and an optional trial build.
 - `mdbindery init`, `install-tools`, `doctor`, and `preview` (phone-size screenshots).
 - Installers for Linux, macOS, and Windows that need nothing preinstalled and no admin rights. uv, pandoc, EPUBCheck, and Node.js downloads are pinned and checksum-verified.
+- Packages on PyPI, a Homebrew tap (`sagol/tap`), and a GitHub Action (`uses: sagol/mdbindery@v0.1.0`) that installs mdbindery and its tools with caching.
 - Agent skills for running mdbindery and for preparing a repository for it.
