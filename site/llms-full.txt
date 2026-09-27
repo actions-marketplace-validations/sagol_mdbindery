@@ -149,12 +149,12 @@ Installs companion tools using the version and verification policy in section 2.
 
 ## 4. Build validation gates
 
-Builds that reach validation record these gate states (`pass`, `warn`, `fail`, or `skipped`) in `reports/build.json`. A trial build from `mdbindery check --build` uses a temporary directory. Early failures can stop the build before validation:
+Builds that reach validation record the reported gate states (`pass`, `warn`, `fail`, or `skipped`) in `reports/build.json`. A trial build from `mdbindery check --build` uses a temporary directory. Early failures can stop the build before validation:
 
 1. **`links`**: Fails when an internal link target (chapter file or `#anchor`) is missing and `options.strict_links` is `true` (default). Warns when `options.strict_links` is `false`. Never skipped.
 2. **`images`**: Fails when an image is missing, remote (`http://`, `https://`), has an empty path, or (during the trial build of an untrusted repository checked by URL) lies outside the repository checkout. Ordinary local builds allow readable files outside the book folder. Never skipped.
 3. **`charts`**: Fails when a ```` ```mermaid ```` block fails to render. Warns (replacing charts with placeholders) when the book has charts, `options.mermaid` is `png`, and `mermaid-cli` is not installed. Never skipped.
-4. **`includes`**: Appears in `build.json` and fails only when an `mdBook` directive (`{{#include}}`, `{{#rustdoc_include}}`, `{{#playground}}`) could not be expanded (missing file, path outside repository, missing anchor, include cycle, nesting >10 levels, >5000 includes, or >20 MB included text per file).
+4. **`includes`**: Present in `build.json` only with `result: "fail"` when an `mdBook` directive (`{{#include}}`, `{{#rustdoc_include}}`, `{{#playground}}`) could not be expanded (missing file, path outside repository, missing anchor, include cycle, nesting >10 levels, >5000 includes, or >20 MB included text per file). Omitted when no include directive fails; no `pass` entry is emitted.
 5. **`epubcheck`**: Fails when `EPUBCheck v5.4.0` reports an `ERROR` or `FATAL` message, cannot run (missing Java 11+ or EPUBCheck), or crashes without producing `reports/epubcheck.json`. Skipped when `options.epubcheck: false`.
 6. **`ace`**: Fails when `DAISY Ace` reports a `critical` or `serious` violation whose rule is not listed in `options.ace_waivers`, or when Ace is installed but produces no `reports/ace/report.json`. Warns when Ace is not installed. Skipped with `--no-ace` or `options.ace: false`.
 7. **`wordcount`**: Fails when any chapter file's EPUB word count differs from its prepared Markdown source by more than `options.wordcount_tolerance` (default `0.02`, 2%) AND more than `options.wordcount_min_words` (default `25` words), after adjusting for repeated column labels in card tables. Never skipped.

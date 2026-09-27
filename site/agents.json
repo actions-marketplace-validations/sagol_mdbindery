@@ -64,7 +64,7 @@
     },
     "build": {
       "syntax": "mdbindery build [path] [-c CONFIG] [-o OUT] [--no-ace] [--keep-work] [-q]",
-      "description": "Build <output_dir>/<slug>.epub and reports/build.json, running configured gates (links, images, charts, includes, epubcheck, ace, wordcount). Writes reports/epubcheck.json and reports/ace/report.json when those validators run.",
+      "description": "Build <output_dir>/<slug>.epub and reports/build.json, running configured gates (links, images, charts, includes, epubcheck, ace, wordcount). The includes gate is recorded only on failure and omitted otherwise. Writes reports/epubcheck.json and reports/ace/report.json when those validators run.",
       "exit_codes": {
         "0": "EPUB built and no active gate failed (warn or skipped gates do not fail the build).",
         "1": "EPUB written, but at least one validation gate failed.",

@@ -85,7 +85,7 @@
           "Transforms invisible numeric reference definitions [1] into linked reference lists",
           "Renders Mermaid diagrams to PNG with automatic alt text",
           "Converts wide tables into phone-readable row cards for configured files",
-          "Runs configured validation gates (links, images, charts, includes, W3C EPUBCheck 5.4.0, DAISY Ace 1.4.6, and per-file word count) and records pass, warn, fail, or skipped states in reports/build.json",
+          "Runs configured validation gates (links, images, charts, includes, W3C EPUBCheck 5.4.0, DAISY Ace 1.4.6, and per-file word count) and records pass, warn, fail, or skipped states in reports/build.json; includes is recorded only on failure",
           "Produces byte-identical EPUB builds when built from the same commit with the same tools, fonts, and saved metadata.identifier",
           "Ships SKILL.md files for AI coding agents (Claude Code, Codex, Cursor, Antigravity)"
         ]
@@ -438,7 +438,7 @@ mdbindery doctor</code></pre>
           <span class="section-eyebrow">Build checks</span>
           <h2 id="pipeline-heading" class="section-title">7 validation gates with structured reporting</h2>
           <p class="section-desc">
-            <code>mdbindery build</code> writes the EPUB and evaluates its validation gates, recording each gate's state (<code>pass</code>, <code>warn</code>, <code>fail</code>, or <code>skipped</code>) in <code>dist/reports/build.json</code>. If any gate fails, the command exits with status <code>1</code>.
+            <code>mdbindery build</code> writes the EPUB and evaluates its validation gates, recording reported gate states (<code>pass</code>, <code>warn</code>, <code>fail</code>, or <code>skipped</code>) in <code>dist/reports/build.json</code>. The <code>includes</code> entry appears only on failure. If any gate fails, the command exits with status <code>1</code>.
           </p>
         </div>
 
@@ -472,7 +472,7 @@ mdbindery doctor</code></pre>
               <span class="gate-name">4. includes</span>
               <span class="badge badge-pass">Gate</span>
             </div>
-            <p>Validates <code>mdBook</code> <code>{{#include}}</code> expansions; recorded in <code>build.json</code> and fails when a directive cannot be expanded (missing file, cycle, or size limit).</p>
+            <p>Reports failed <code>mdBook</code> <code>{{#include}}</code> expansions (missing file, cycle, or size limit). The <code>includes</code> gate appears in <code>build.json</code> only with <code>result: "fail"</code>. It is omitted when no include directive fails; no <code>pass</code> entry is emitted.</p>
           </div>
 
           <div class="gate-card">
