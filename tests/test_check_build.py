@@ -1,7 +1,7 @@
 import hashlib
 import zipfile
 
-from conftest import EXAMPLES, FIXTURES, needs_epubcheck, needs_pandoc
+from conftest import EXAMPLES, FIXTURES, HAVE_MMDC, needs_epubcheck, needs_pandoc, validate_if_installed
 from mdbindery import config
 from mdbindery.build import build
 from mdbindery.check import check, to_json, to_markdown
@@ -25,7 +25,9 @@ def test_check_finds_every_planted_problem(copy_book):
 def test_sample_book_is_clean(copy_book):
     rep = check(str(copy_book(EXAMPLES / 'sample-book')), render=False, log=lambda *_: None)
     assert rep.ok, [f for f in rep.findings if f['severity'] == 'error']
-    assert rep.count('warning') == 0, [f for f in rep.findings if f['severity'] == 'warning']
+    warnings = [f for f in rep.findings if f['severity'] == 'warning']
+    # without mermaid-cli the sample's chart would become a placeholder, and check says so
+    assert [f['code'] for f in warnings] == ([] if HAVE_MMDC else ['MB700']), warnings
 
 
 @needs_pandoc
@@ -46,22 +48,20 @@ def test_sample_book_builds_and_passes_gates(copy_book, tmp_path):
 
 
 @needs_pandoc
-@needs_epubcheck
 def test_builds_are_reproducible(copy_book, tmp_path):
     book = copy_book(FIXTURES / 'ru-book')
     digests = []
     for i in range(2):
-        s = build(config.load(book), out_dir=tmp_path / f'o{i}', run_ace=False, log=lambda *_: None)
+        s = build(validate_if_installed(config.load(book)), out_dir=tmp_path / f'o{i}', run_ace=False, log=lambda *_: None)
         assert s['ok'], s['failed_gates']
         digests.append(hashlib.sha256(open(s['epub'], 'rb').read()).hexdigest())
     assert digests[0] == digests[1]
 
 
 @needs_pandoc
-@needs_epubcheck
 def test_russian_book(copy_book, tmp_path):
     book = copy_book(FIXTURES / 'ru-book')
-    s = build(config.load(book), out_dir=tmp_path / 'out', run_ace=False, log=lambda *_: None)
+    s = build(validate_if_installed(config.load(book)), out_dir=tmp_path / 'out', run_ace=False, log=lambda *_: None)
     assert s['ok']
     with zipfile.ZipFile(s['epub']) as z:
         opf = next(z.read(n).decode() for n in z.namelist() if n.endswith('.opf'))
@@ -81,7 +81,6 @@ def _book(tmp_path, files, config=''):
 
 
 @needs_pandoc
-@needs_epubcheck
 def test_structure_problems_are_repaired_consistently(tmp_path):
     """No level-1 heading, text above the title, a link outside the book without source_url,
     and split_level 2 must still give a valid EPUB whose word counts match."""
@@ -93,7 +92,7 @@ def test_structure_problems_are_repaired_consistently(tmp_path):
         'LICENSE': 'MIT\n',
     }, 'metadata:\n  title: T\n  identifier: urn:uuid:00000000-0000-4000-8000-000000000002\n'
        'options:\n  split_level: 2\n  ace: false\n')
-    s = build(config.load(book), out_dir=tmp_path / 'out', run_ace=False, log=lambda *_: None)
+    s = build(validate_if_installed(config.load(book)), out_dir=tmp_path / 'out', run_ace=False, log=lambda *_: None)
     assert s['ok'], (s['failed_gates'], s['gates'].get('wordcount'), s['gates'].get('epubcheck'))
     with zipfile.ZipFile(s['epub']) as z:
         nav = z.read('EPUB/nav.xhtml').decode()
@@ -128,9 +127,9 @@ def test_check_respects_drop_lines_and_html_alt_rules(tmp_path):
 
 
 @needs_pandoc
-@needs_epubcheck
 def test_check_build_does_not_touch_config(tmp_path):
-    book = _book(tmp_path, {'01-a.md': '# A\n\nText.\n'}, 'metadata:\n  title: T\n  identifier:\n')
+    book = _book(tmp_path, {'01-a.md': '# A\n\nText.\n'},
+                 'metadata:\n  title: T\n  identifier:\noptions:\n  epubcheck: false\n')
     before = (book / 'mdbindery.yaml').read_text()
     check(str(book), do_build=True, render=False, log=lambda *_: None)
     assert (book / 'mdbindery.yaml').read_text() == before

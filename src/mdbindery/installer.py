@@ -10,10 +10,10 @@ import os
 import re
 import shutil
 import stat
-import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -111,13 +111,52 @@ def extract(archive, dest):
                 t.extractall(root)
 
 
-def _place(found_binary, target, bin_style=True):
-    """Move the directory containing a binary (or its parent if it sits in bin/) to target."""
+def _staging(target):
+    """A fresh staging folder next to target (same file system, so the final switch is a rename)."""
+    staged = target.with_name(f'.staging-{target.name}')
+    if staged.exists():
+        shutil.rmtree(staged)
+    return staged
+
+
+def _swap_in(staged, target, check=None):
+    """Replace target with a staged folder; the old one stays until the new one passes check(target)."""
+    old = target.with_name(f'.old-{target.name}')
+    if old.exists():
+        shutil.rmtree(old)
+    if target.exists():
+        target.rename(old)
+    try:
+        staged.rename(target)
+        if check:
+            check(target)
+    except BaseException:
+        if old.exists():
+            if target.exists():
+                shutil.rmtree(target, ignore_errors=True)
+            old.rename(target)
+        raise
+    shutil.rmtree(old, ignore_errors=True)
+
+
+def _place(found_binary, target, version, check=None, bin_style=True):
+    """Install the folder holding a binary (or its parent if it sits in bin/) as target, transactionally."""
     p = Path(found_binary)
     root = p.parent.parent if (bin_style and p.parent.name == 'bin') else p.parent
-    if target.exists():
-        shutil.rmtree(target)
-    shutil.move(str(root), str(target))
+    staged = _staging(target)
+    shutil.move(str(root), str(staged))
+    _marker(staged, version)  # the marker always describes the folder it sits in
+    _swap_in(staged, target, check)
+
+
+def _runs(*args):
+    """A check that the installed program starts: args[0] is relative to the installed folder."""
+    def check(folder):
+        exe = folder / args[0]
+        r = tools.run_process([exe, *args[1:]], timeout=120, tail=4096)
+        if r.returncode != 0:
+            raise RuntimeError(f'{exe} does not run after installation: {(r.stderr or r.stdout).strip()[-300:]}')
+    return check
 
 
 def _make_executable(path):
@@ -153,9 +192,7 @@ def install_pandoc(tmp, force=False):
     else:
         exe = next(p for p in ex.rglob('pandoc') if p.is_file() and p.parent.name == 'bin')
     _make_executable(exe)
-    _place(exe, target)
-    _make_executable(target / 'bin' / 'pandoc')
-    _marker(target, PANDOC_VERSION)
+    _place(exe, target, PANDOC_VERSION, _runs(Path('bin') / tools._exe('pandoc'), '--version'))
 
 
 def install_epubcheck(tmp, force=False):
@@ -167,10 +204,14 @@ def install_epubcheck(tmp, force=False):
     arc = tmp / 'epubcheck.zip'
     download(f'https://github.com/w3c/epubcheck/releases/download/v{EPUBCHECK_VERSION}/epubcheck-{EPUBCHECK_VERSION}.zip',
              arc, EPUBCHECK_SHA)
-    if target.exists():
-        shutil.rmtree(target)
-    extract(arc, target)
-    _marker(target, EPUBCHECK_VERSION)
+    staged = _staging(target)
+    extract(arc, staged)
+    _marker(staged, EPUBCHECK_VERSION)
+
+    def has_jar(folder):
+        if not any(folder.glob('**/epubcheck.jar')):
+            raise RuntimeError('epubcheck.jar missing from the EPUBCheck download')
+    _swap_in(staged, target, has_jar)
 
 
 def install_jre(tmp, mode='auto', force=False):
@@ -199,8 +240,8 @@ def install_jre(tmp, mode='auto', force=False):
     extract(arc, ex)
     exe = next(p for p in ex.rglob('java.exe' if tools.IS_WIN else 'java') if p.is_file() and p.parent.name == 'bin')
     _make_executable(exe)
-    _place(exe, target)
-    _marker(target, str(JRE_MAJOR))
+    rel = exe.relative_to(exe.parent.parent)
+    _place(exe, target, str(JRE_MAJOR), _runs(rel, '-version'))
 
 
 def install_node(tmp, force=False):
@@ -221,13 +262,15 @@ def install_node(tmp, force=False):
         exe = next(p for p in ex.rglob('node.exe') if p.is_file())
     else:
         exe = next(p for p in ex.rglob('node') if p.is_file() and p.parent.name == 'bin')
-    _place(exe, target)
-    _marker(target, NODE_VERSION)
+    rel = Path('node.exe') if tools.IS_WIN else Path('bin') / 'node'
+    _place(exe, target, NODE_VERSION, _runs(rel, '--version'), bin_style=not tools.IS_WIN)
+    tools.clear_cache()
 
 
-def _run(cmd, env):
-    r = subprocess.run([str(c) for c in cmd], env=env, capture_output=True, text=True, encoding='utf-8',
-                       errors='replace')
+def _run(cmd, env, timeout=1800):
+    r = tools.run_process(cmd, env=env, timeout=tools.deadline(timeout), tail=65536)
+    if r.timed_out:
+        raise RuntimeError(f"command did not finish within {tools.deadline(timeout):.0f} s: {' '.join(map(str, cmd))}")
     if r.returncode != 0:
         raise RuntimeError(f"command failed: {' '.join(map(str, cmd))}\n{r.stdout[-2000:]}\n{r.stderr[-2000:]}")
     return r
@@ -250,9 +293,18 @@ def install_npm_packages(force=False):
         env['PUPPETEER_SKIP_DOWNLOAD'] = '1'       # browsers are installed explicitly below
         env['ELECTRON_SKIP_BINARY_DOWNLOAD'] = '1'  # Ace's Electron runner is not used
         say(f'npm: installing {want}')
-        prefix.mkdir(parents=True, exist_ok=True)
-        _run(npm + ['install', '-g', '--prefix', str(prefix), '--no-fund', '--no-audit', *NPM_PACKAGES], env)
-        marker.write_text(want)
+        staged = _staging(prefix)  # the working copy stays until the new one is complete
+        staged.mkdir(parents=True)
+        _run(npm + ['install', '-g', '--prefix', str(staged), '--no-fund', '--no-audit', *NPM_PACKAGES], env)
+        (staged / '.mdbindery-version').write_text(want)
+
+        def has_packages(folder):
+            mods = folder / ('node_modules' if tools.IS_WIN else 'lib/node_modules')
+            for pkg in ('@mermaid-js/mermaid-cli', '@daisy/ace'):
+                if not (mods / pkg / 'package.json').is_file():
+                    raise RuntimeError(f'npm did not install {pkg}')
+        _swap_in(staged, prefix, has_packages)
+        tools.clear_cache()
     # every Puppeteer copy fetches the headless Chrome build it expects
     node = tools.find('node')
     for pkg in sorted(tools.npm_modules_dir().rglob('node_modules/puppeteer/package.json')):
@@ -261,7 +313,7 @@ def install_npm_packages(force=False):
         if not bin_rel:
             continue
         say(f"Puppeteer {meta.get('version')}: installing headless Chrome")
-        _run([node, str(pkg.parent / bin_rel), 'browsers', 'install', 'chrome-headless-shell'], env)
+        _run([node, str(pkg.parent / bin_rel), 'browsers', 'install', 'chrome-headless-shell'], env, timeout=1200)
     shutil.rmtree(cache, ignore_errors=True)
 
 
@@ -269,15 +321,14 @@ def self_test():
     """Tool status: a dict of name -> version string or None, plus 'notes'."""
     status, notes = {}, {}
     p = tools.find('pandoc')
-    status['pandoc'] = subprocess.run([p, '--version'], capture_output=True, text=True, encoding='utf-8',
-                                      errors='replace').stdout.split('\n')[0] if p else None
+    status['pandoc'] = tools.run_process([p, '--version'], timeout=60).stdout.split('\n')[0] if p else None
     old = tools.old_pandoc_on_path()
     if old and not p:
         notes['pandoc'] = f'{old} on PATH is older than 3.8 and is not used'
     ec = tools.epubcheck_cmd()
     status['epubcheck'] = None
     if ec:
-        r = subprocess.run(ec + ['--version'], capture_output=True, text=True, encoding='utf-8', errors='replace')
+        r = tools.run_process(ec + ['--version'], timeout=120, tail=65536)
         m = re.search(r'EPUBCheck v[\d.]+', (r.stdout or '') + (r.stderr or ''))
         if m:
             status['epubcheck'] = m.group(0)
@@ -288,14 +339,12 @@ def self_test():
     j = tools.find('java')
     status['java'] = f'{j} (version {tools.java_version(j)})' if j else None
     n = tools.find('node')
-    status['node'] = subprocess.run([n, '--version'], capture_output=True, text=True, encoding='utf-8',
-                                    errors='replace').stdout.strip() if n else None
+    status['node'] = tools.run_process([n, '--version'], timeout=60).stdout.strip() if n else None
     status['mermaid'] = mermaid_ok()
     a = tools.command('ace')
     status['ace'] = None
     if a:
-        r = subprocess.run(a + ['--version'], capture_output=True, text=True, encoding='utf-8', errors='replace',
-                           env=tools.ace_env())
+        r = tools.run_process(a + ['--version'], env=tools.ace_env(), timeout=120, tail=65536)
         status['ace'] = r.stdout.strip() or None
     try:
         import PIL
@@ -316,10 +365,9 @@ def mermaid_ok():
         src.write_text('graph LR\n  A-->B\n')
 
         def render():
-            return subprocess.run(cmd + ['-q', '-i', str(src), '-o', str(out), '-b', 'white',
-                                         '-p', str(tools.puppeteer_config())],
-                                  capture_output=True, text=True, encoding='utf-8', errors='replace',
-                                  env=tools.tool_env())
+            return tools.run_process(cmd + ['-q', '-i', str(src), '-o', str(out), '-b', 'white',
+                                            '-p', str(tools.puppeteer_config())],
+                                     env=tools.tool_env(), timeout=180, tail=65536)
         r = render()
         if r.returncode != 0 and tools.sandbox_error(r.stderr + r.stdout) and not tools.no_sandbox():
             tools.disable_sandbox()
@@ -329,8 +377,38 @@ def mermaid_ok():
         return 'installed but cannot render: ' + (r.stderr.strip().split('\n') or [''])[-1][:200]
 
 
+def _lock():
+    """One install-tools at a time per tool home; a lock older than three hours counts as abandoned."""
+    path = tools.tools_dir() / '.install.lock'
+    for _ in range(2):
+        try:
+            fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.write(fd, f'{os.getpid()}\n'.encode())
+            os.close(fd)
+            return path
+        except FileExistsError:
+            try:
+                age = time.time() - path.stat().st_mtime
+            except FileNotFoundError:  # the other run just finished
+                continue
+            if age < 3 * 3600:
+                raise RuntimeError(f'another `mdbindery install-tools` is running (lock file {path}); '
+                                   'delete that file if it is not')
+            path.unlink(missing_ok=True)
+    raise RuntimeError(f'cannot take the install lock {path}')
+
+
 def install_all(no_node=False, jre='auto', force=False):
     tools.tools_dir().mkdir(parents=True, exist_ok=True)
+    lock = _lock()
+    try:
+        return _install_all(no_node, jre, force)
+    finally:
+        lock.unlink()
+        tools.clear_cache()
+
+
+def _install_all(no_node, jre, force):
     say(f'mdbindery tool home: {tools.home()}')
     optional_failed = []
     with tempfile.TemporaryDirectory(prefix='mdbindery-install-') as d:
@@ -338,6 +416,7 @@ def install_all(no_node=False, jre='auto', force=False):
         install_pandoc(tmp, force)
         install_epubcheck(tmp, force)
         install_jre(tmp, jre, force)
+        tools.clear_cache()
         if not no_node:
             # charts, Ace, and preview are optional: a failure here must not hide the required tools
             try:

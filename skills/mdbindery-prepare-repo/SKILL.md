@@ -7,7 +7,7 @@ description: Prepare a GitHub or local repository of Markdown chapters so that m
 
 mdbindery builds an EPUB 3 from Markdown written the GitHub way: one file per chapter, relative links between files, images inside the repository, citations as `[1]` with reference definitions. This skill brings an existing repository into that shape and loops on `mdbindery check` and `mdbindery build` until every gate passes. The same files must keep rendering well on github.com.
 
-The authoritative rules are in `docs/book-structure.md`, `docs/checking.md`, and `docs/configuration.md` of the mdbindery repository. This skill adds the procedure, a fix for every check code, and the tool's limits, verified against mdbindery 0.1.0.
+The authoritative rules are in `docs/book-structure.md`, `docs/checking.md`, and `docs/configuration.md` of the mdbindery repository. This skill adds the procedure, a fix for every check code, and the tool's limits, verified against mdbindery 0.1.1.
 
 ## When to use
 
@@ -326,7 +326,7 @@ Footnotes are written `Text.[^1]` with `[^1]: The note.` anywhere in the same fi
 - Keep every image inside the repository, usually in `images/`, and reference it with a path relative to the Markdown file: `images/x.png` from a root chapter, `../images/x.png` from `chapters/`. A path starting with `/` is relative to the repository root.
 - Paths are case-sensitive on GitHub. Match the file name's case exactly, even if a local macOS or Windows file system forgives it.
 - Name files in lowercase with hyphens, no spaces. Move and rename with `git mv`, then update every reference (`git grep -n -F "old-name.png"`).
-- MB406 (image outside the book folder): a local build embeds it anyway, but keep book images inside the book folder. For a repository checked by URL, an image outside the repository is an error and fails the images gate.
+- MB406 (image outside the book folder): a local build embeds it anyway, but keep book images inside the book folder. For a repository checked by URL, an image outside the repository is an error and fails the images gate. Symlinks count by their target there: a link out of the repository is removed before the check (MB407), so commit real files.
 - MB401 as a note (an image URL of this repository, such as `https://github.com/OWNER/REPO/blob/main/images/x.png?raw=true` or `raw.githubusercontent.com/...`): the build uses the local file. Replace the URL with the relative path given in the fix text.
 
 #### 8.2 Kinds of images
@@ -424,7 +424,7 @@ Then replace the URL with the relative path and keep the alt text.
 - Up to about 6 columns read well on a phone. MB600 fires at 9 or more (`wide_table_warn`) unless the file is a card file.
 - Cards: list the file under `options.cards.files`, spelled as in `files:`. Every table in that file with at least `cards.min_columns` (default 9) columns becomes cards: one block per row, the first `title_columns` cells joined as the card heading, every other non-empty cell as a "Column: value" line. Lower `min_columns` (for example to 7) to card narrower tables; it applies to all listed files.
 - Row anchors: write `<a id="r07"></a>R07` in the first cell; the first anchor becomes the card's id.
-- Card files are exempt from the word-count gate.
+- Card files go through the word-count gate like any other; it subtracts the column labels that cards repeat.
 - The author may prefer to split, transpose, or move a table to an appendix. Offer these; do not do them unasked.
 - Layout tables (images in a grid, badges in cells) turn into data tables with icon-sized images. Propose separate figures instead.
 
@@ -477,7 +477,7 @@ MB501 (info, after analysis) lists the tags that will be dropped per file. Unclo
 mdbindery recognizes an mdBook (MB130): a `book.toml` in the book folder or the folder `source_dir` names (its `src`, default `src/`, becomes the book folder) or a `SUMMARY.md` with `book.toml` one level up. Title, authors, description, and language come from `book.toml`, and the reading order from `SUMMARY.md`; files it does not list are left out. Check and build from the folder that holds `book.toml`. A `SUMMARY.md` without any `book.toml` (GitBook and similar tools) only sets the reading order: no MB130, and Rust code stays as written.
 
 - `{{#include}}` paths may leave `src/` (`../listings/...`) but must stay inside the repository: the git checkout, or outside git the folder with `book.toml`.
-- Directives are expanded in every file: `{{#include path}}`, with `:N`, `:N:M`, `:N:`, `::M`, or `:anchor` (the lines between `ANCHOR: anchor` and `ANCHOR_END: anchor`); `{{#rustdoc_include ...}}` and `{{#playground ...}}` like `include`; `{{#title ...}}` is dropped; `\{{#include ...}}` stays as literal text. Paths are relative to the Markdown file. A missing file or anchor is MB131 (error) and fails the `includes` gate: fix the path, or ask the author what the listing should contain.
+- Directives are expanded in every file: `{{#include path}}`, with `:N`, `:N:M`, `:N:`, `::M`, or `:anchor` (the lines between `ANCHOR: anchor` and `ANCHOR_END: anchor`); `{{#rustdoc_include ...}}` and `{{#playground ...}}` like `include`; `{{#title ...}}` is dropped; `\{{#include ...}}` stays as literal text. Paths are relative to the Markdown file. A missing file or anchor is MB131 (error) and fails the `includes` gate: fix the path, or ask the author what the listing should contain. A file that includes itself (directly or through others) is reported as `include cycle: a.md -> b.md -> a.md`.
 - In `rust` code blocks, lines starting with `# ` are hidden and `##` becomes `#`, as mdBook does.
 - `.html` links between chapters resolve to the `.md` files (MB205).
 - Links to other published books and API docs (`../std/io/index.html`, `../reference/...`) are MB204 errors with a GitHub `source_url`. Set `source_url` to the published book (`https://doc.rust-lang.org/book/` for the Rust book) so they stay web links (MB203).
@@ -581,7 +581,7 @@ Severity: E error, W warning, I info (note). Only errors make `check` exit with 
 | MB125 | I | reading order inferred (the message says from what) | check it, then write it into `files:` |
 | MB126 | W | a table of contents file is in the reading order | remove it from `files:` |
 | MB130 | I | mdBook layout recognized | see step 13 |
-| MB131 | E | mdBook directive not expanded (file or anchor missing, or outside the repository) | fix the path or anchor (step 13) |
+| MB131 | E | mdBook directive not expanded (file or anchor missing, outside the repository, an include cycle, nesting over 10 levels, or a size limit) | fix the path or anchor, or break the cycle (step 13) |
 | MB200 | E | link to an anchor that does not exist | fix the fragment, or add `<a id>` at the target |
 | MB201 | W | anchor matched only approximately | use the anchor named in the message |
 | MB202 | W | link to a file that is not in the book; it becomes plain text | set `source_url`, or add the file to `files:` |
@@ -607,6 +607,7 @@ Severity: E error, W warning, I info (note). Only errors make `check` exit with 
 | MB405 | W | SVG with scripts or `foreignObject` | re-export as PNG or plain SVG |
 | MB406 | W | image outside the book folder | move it into the book's `images/` |
 | MB406 | E | URL check: image outside the repository | move it into the repository |
+| MB407 | W | URL check: a symlink pointed outside the repository and was removed | commit the file itself instead of the link |
 | MB410 | I | no cover image; one will be generated | add `images/cover.jpg` (1600x2560), or accept the generated cover |
 | MB411 | W | cover under 1400 px on the short side, ratio outside 1.4 to 1.7, or CMYK | resize or crop to 1600x2560, RGB (8.6) |
 | MB412 | E | cover file not found, or cannot be read | fix `cover.image`, or save the cover again as JPEG |
@@ -628,7 +629,7 @@ Severity: E error, W warning, I info (note). Only errors make `check` exit with 
 
 ## Known limitations
 
-Verified in mdbindery 0.1.0. Keep them in mind so you do not chase phantom problems or miss real ones.
+Verified in mdbindery 0.1.1. Keep them in mind so you do not chase phantom problems or miss real ones.
 
 - MB106 and MB110 are warnings because the build repairs these files; fix them anyway, since the repaired titles come from file names or promoted headings the author did not choose. MB107 is a warning because the book still builds, with one more table of contents entry for each extra `#` heading.
 - `facts.totals.images` estimates image kinds line by line (8.2); the preview decides.

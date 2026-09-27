@@ -139,7 +139,7 @@ Without `source_url`, a link to an existing file outside the book is removed and
 | `authors` | list of text, or one text | `[]` | a single string becomes a one-item list | Authors, each written as `dc:creator` with the author role. |
 | `lang` | language tag | `en-US`, or inferred | `en-US`, `ru`, `de`, ...; quote codes YAML reads as booleans (`lang: 'no'`) | Book language (`dc:language`). It drives hyphenation, the reader's dictionary, and the default accessibility summary. |
 | `identifier` | text | `""` | `~` and `null` count as empty | Permanent identifier. When empty, the first build generates a `urn:uuid:` and writes it into this key. |
-| `date` | `git` or a date | `git` | `git`, or a date that starts with the year: `2026`, `2026-09`, `2026-09-01`; unquoted YAML dates are accepted | Publication date (`dc:date`). |
+| `date` | `git` or a date | `git` | `git`, `YYYY`, `YYYY-MM`, or `YYYY-MM-DD`, and a real calendar date (`2026-02-30` is an error); unquoted YAML dates are accepted | Publication date (`dc:date`). |
 | `rights` | text | `""`, or inferred from a license file | | Rights statement (`dc:rights`), for example `CC BY 4.0` or `© 2026 Jane Doe. All rights reserved.` |
 | `publisher` | text | `""` | | Publisher (`dc:publisher`). Omitted when empty. |
 | `description` | text | `""` | | Short description (`dc:description`) that stores and reading apps show. Omitted when empty. |
@@ -218,7 +218,7 @@ Options are grouped by topic below. Setting a list option replaces the whole def
 Some rules hold for every option:
 
 - Booleans must be `true` or `false`. YAML also reads unquoted `yes`, `no`, `on`, and `off` as booleans; quoted text such as `"yes"` is an error.
-- Numbers must lie in the range given in the tables. Quoted digits (`"2"`) are accepted; whole-number options reject fractions.
+- Numbers must lie in the range given in the tables. Quoted digits (`"2"`) are accepted; whole-number options reject fractions, and every option rejects `.nan` and `.inf` (`options.wordcount_tolerance must be a finite number, not nan`).
 - List options (`drop_lines`, `reference_headings`, `embed_fonts`, `ace_waivers`, `cards.files`) must be YAML lists, even with one item.
 
 ### Citations and references
@@ -333,7 +333,7 @@ Colored highlight styles can fail Ace's contrast check; `monochrome` passes it a
 | `accessibility_summary` | text | a built-in sentence in English or Russian | Written as `schema:accessibilitySummary`. |
 | `conformance_claim` | text | `""` | When set, written as `dcterms:conformsTo`, for example `EPUB Accessibility 1.1 - WCAG 2.2 Level AA`. |
 
-The built-in English summary is: "This publication has a navigable table of contents and a logical reading order; headings, lists, and tables are marked up structurally, and images carry text alternatives." The Russian one is used when `metadata.lang` starts with `ru`; every other language gets the English text, so write your own summary for books in other languages. Set `conformance_claim` only after the book has actually been evaluated against the standard you name.
+The built-in English summary is: "This publication has a navigable table of contents and a logical reading order; headings, lists, and tables are marked up structurally", and its ending follows the book: ", and images carry text alternatives." when every image has alt text, "; some images have no text alternative." when some do not, and a plain full stop for a book without images. So the summary never claims more than the `alternativeText` feature does. The Russian one is used when `metadata.lang` starts with `ru`; every other language gets the English text, so write your own summary for books in other languages. Set `conformance_claim` only after the book has actually been evaluated against the standard you name.
 
 mdbindery adds the other schema.org accessibility properties itself: access mode `textual`, plus `visual` when the book has images (rendered charts count); the features `tableOfContents`, `readingOrder`, and `structuralNavigation`, plus `alternativeText` only when every image has alt text; and hazard `none`.
 

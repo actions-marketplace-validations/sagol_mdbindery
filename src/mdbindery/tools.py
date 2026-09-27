@@ -1,11 +1,14 @@
 """Where mdbindery keeps its external tools, and how to find and run them."""
+import functools
 import json
 import os
 import platform
 import re
 import shutil
+import signal
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 IS_WIN = os.name == 'nt'
@@ -98,6 +101,7 @@ def candidates(name):
     return []
 
 
+@functools.lru_cache(maxsize=None)
 def pandoc_version(path):
     try:
         r = subprocess.run([path, '--version'], capture_output=True, text=True, encoding='utf-8',
@@ -110,6 +114,17 @@ def pandoc_version(path):
 
 def find(name):
     """Absolute path of a tool or None. Bundled tools (including a downloaded Java runtime) win over PATH."""
+    return _find(name, str(home()), os.environ.get('PATH', ''))
+
+
+def clear_cache():
+    """Forget what was found (after tools are installed or removed)."""
+    _find.cache_clear()
+    pandoc_version.cache_clear()
+
+
+@functools.lru_cache(maxsize=None)
+def _find(name, _home, _path):
     if name == 'epubcheck':
         jar = epubcheck_jar()
         return str(jar) if jar else None
@@ -218,8 +233,73 @@ def disable_sandbox():
     return puppeteer_config()
 
 
+SANDBOX_ERRORS = re.compile(r'No usable sandbox|without --no-sandbox|setuid sandbox|suid[ _]sandbox|'
+                            r'Failed to move to new namespace|crbug\.com/638180', re.I)
+
+
 def sandbox_error(text):
-    return 'sandbox' in (text or '').lower()
+    """True only for Chrome's own sandbox start-up failures."""
+    return bool(SANDBOX_ERRORS.search(text or ''))
+
+
+class Completed:
+    def __init__(self, returncode, stdout, stderr, timed_out):
+        self.returncode, self.stdout, self.stderr, self.timed_out = returncode, stdout, stderr, timed_out
+
+
+def deadline(seconds):
+    """A stage's time limit; MDBINDERY_TIMEOUT_SCALE multiplies every limit (slow machines, huge books)."""
+    try:
+        scale = float(os.environ.get('MDBINDERY_TIMEOUT_SCALE') or 1)
+    except ValueError:
+        scale = 1.0
+    return seconds * max(scale, 0.1)
+
+
+def _kill_tree(proc):
+    try:
+        if IS_WIN:
+            subprocess.run(['taskkill', '/T', '/F', '/PID', str(proc.pid)], capture_output=True, timeout=30)
+        else:
+            os.killpg(proc.pid, signal.SIGKILL)
+    except (OSError, subprocess.SubprocessError):
+        pass
+    try:
+        proc.kill()
+    except OSError:
+        pass
+
+
+def run_process(cmd, env=None, cwd=None, timeout=None, tail=None):
+    """Run a command without a shell; stop its whole process tree on timeout or Ctrl+C.
+
+    Output goes to temporary files, not pipes; tail keeps only the last N bytes of each stream
+    (diagnostic output), otherwise all of it is returned (data such as pandoc's plain text).
+    """
+    kw = {'creationflags': subprocess.CREATE_NEW_PROCESS_GROUP} if IS_WIN else {'start_new_session': True}
+    with tempfile.TemporaryFile() as out, tempfile.TemporaryFile() as err:
+        proc = subprocess.Popen([str(c) for c in cmd], env=env, cwd=cwd, stdin=subprocess.DEVNULL,
+                                stdout=out, stderr=err, **kw)
+        timed_out = False
+        try:
+            proc.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            _kill_tree(proc)
+            proc.wait()
+        except BaseException:
+            _kill_tree(proc)
+            proc.wait()
+            raise
+
+        def read(f):
+            size = f.seek(0, 2)
+            f.seek(size - tail if tail and size > tail else 0)
+            return f.read().decode('utf-8', errors='replace')
+        stdout, stderr = read(out), read(err)
+    if timed_out:
+        stderr += f'\n(stopped after {timeout:.0f} s)'
+    return Completed(-9 if timed_out else proc.returncode, stdout, stderr, timed_out)
 
 
 def _headless_shell(version):

@@ -72,6 +72,8 @@ If the target cannot be used, check prints one line to standard error and exits 
 
 A repository fetched by URL is treated as untrusted, because its configuration file comes from someone else. Every path in the configuration must stay inside the repository: `source_dir`, `options.css`, `options.extra_css`, `options.embed_fonts`, and `cover.image`. A path that leaves it is an MB102 error, for example `cover.image must be a file inside the repository`. Images must stay inside the repository too (MB406 error), and so must the files of mdBook `{{#include}}` directives (MB131).
 
+Paths are checked after following symlinks. Before reading anything, check deletes every symlink in the fetched checkout that points outside it, and reports each one as MB407. The same rule holds wherever a repository is untrusted: a chapter reached through such a link is left out of the inferred reading order, a listed file or a configuration file behind one is an MB102 error (`files entry 02-b.md points outside the repository`), a cover is not picked up, and an image is an MB406 error. A local folder you check or build is trusted, so its symlinks work as usual.
+
 For a GitHub target whose configuration has no `source_url`, check assumes `https://github.com/OWNER/REPO/blob/BRANCH/FOLDER/`, where `FOLDER` is the book folder's path in the repository, for the link analysis and the trial build. Links to files outside the book then behave as they would with that setting. For an mdBook the book folder is its `src` folder, so the mdBook guide gets `https://github.com/rust-lang/mdBook/blob/main/guide/src/`. The value appears in the MB202 notes and in the suggested configuration.
 
 When no title can be found in the files, the repository name becomes the title: `REPO` for a GitHub URL, and the last part of the URL without `.git` for other Git URLs.
@@ -474,6 +476,7 @@ To list only the errors: `jq -r '.findings[] | select(.severity == "error") | "\
 | [MB404](#mb404-image-too-large) | warning | an image is over 3200 px or 5 MB |
 | [MB405](#mb405-animated-image-or-scripted-svg) | info, warning | an image is animated, or an SVG has scripts |
 | [MB406](#mb406-image-outside-the-book-folder) | warning, error | an image lies outside the book folder or the repository |
+| [MB407](#mb407-symlink-outside-the-repository-removed) | warning | a symlink in a checked repository pointed outside it and was removed |
 | [MB410](#mb410-no-cover-image) | info | there is no cover image |
 | [MB411](#mb411-cover-size-ratio-or-color-mode) | warning | the cover is small, has an unusual ratio, or is CMYK |
 | [MB412](#mb412-cover-missing-unreadable-or-converted) | error, warning | the cover is missing, unreadable, or not JPEG or PNG |
@@ -696,7 +699,7 @@ mdbindery reads the book the way mdBook would. Preprocessors other than the buil
 
 #### MB131: directive not expanded
 
-Error. An mdBook directive could not be expanded. Message: `mdBook directive not expanded (REASON): DIRECTIVE`, where `REASON` is `file not found`, `outside the repository`, `anchor not found: NAME`, or `cannot read: ...`. Example: `mdBook directive not expanded (file not found): {{#include snippets/missing.rs}}`.
+Error. An mdBook directive could not be expanded. Message: `mdBook directive not expanded (REASON): DIRECTIVE`, where `REASON` is `file not found`, `outside the repository`, `anchor not found: NAME`, `cannot read: ...`, `include cycle: ch1.md -> a.md -> b.md -> a.md` (a file that includes itself, directly or through others), `includes nested deeper than 10 levels`, `more than 5000 includes in one file`, or `included text exceeds 20 MB in one file`. Example: `mdBook directive not expanded (file not found): {{#include snippets/missing.rs}}`.
 
 The build leaves the directive in the text as it is, and its includes gate fails.
 
@@ -973,6 +976,12 @@ Error: `image outside the repository: ../../outside.png`, only for a repository 
 
 Fix: move or copy the image into the book folder (`images/`) and link it from there.
 
+#### MB407: symlink outside the repository removed
+
+Warning, only for a repository checked by URL. Message: `symlink pointing outside the repository was removed: images/logo.png`. The checkout had a symlink whose target lies outside it, such as `../shared/logo.png` or `/etc/hostname`. check deletes it before reading anything, so the report and the trial build see the repository without that file, and later findings (a missing image, a missing chapter) may follow from it.
+
+Fix: commit the file itself instead of a link to it, or a link to a file inside the repository.
+
 ### Cover
 
 #### MB410: no cover image
@@ -1121,7 +1130,7 @@ Fix: build with `mdbindery build` and open the Ace report (`dist/reports/ace/rep
 
 #### MB902: word-count mismatch
 
-Error. For at least one file, the number of words in the EPUB differs from the source by more than `wordcount_tolerance` (default 2%) and by more than `wordcount_min_words` (default 25 words). Files listed in `options.cards.files` are exempt. The message names up to five files, worst first, with the difference: a plus sign means the EPUB has more words.
+Error. For at least one file, the number of words in the EPUB differs from the source by more than `wordcount_tolerance` (default 2%) and by more than `wordcount_min_words` (default 25 words). Files with cards are checked too, after the gate accounts for the column labels that cards repeat (see [building.md](building.md#wordcount)). The message names up to five files, worst first, with the difference: a plus sign means the EPUB has more words.
 
 The example comes from a book checked with `wordcount_tolerance: 0` and `wordcount_min_words: 0`, where the chapter titles made from file names count as added words:
 

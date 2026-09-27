@@ -18,6 +18,15 @@ _require = bool(os.environ.get('MDBINDERY_REQUIRE_TOOLS'))
 needs_pandoc = pytest.mark.skipif(not _require and not tools.find('pandoc'),
                                   reason='pandoc not installed (mdbindery install-tools)')
 needs_epubcheck = pytest.mark.skipif(not _require and not tools.epubcheck_cmd(), reason='EPUBCheck not installed')
+HAVE_EPUBCHECK = _require or bool(tools.epubcheck_cmd())
+HAVE_MMDC = _require or bool(tools.command('mmdc'))
+
+
+def validate_if_installed(cfg):
+    """Content tests also run EPUBCheck when it is installed (always in CI); without it they check content only."""
+    if not HAVE_EPUBCHECK:
+        cfg.opts['epubcheck'] = False
+    return cfg
 
 
 @pytest.fixture

@@ -33,7 +33,9 @@ When something goes wrong, these four places answer most questions:
 | `CHART in 02-body.md failed to render (placeholder used)` | Mermaid syntax error | [Charts and Mermaid](#charts-and-mermaid) |
 | `warning: 3 chart(s) became placeholders: mermaid-cli is not installed` | Installed with `--no-node` | Run `mdbindery install-tools` without `--no-node` |
 | `serious color-contrast x11`, then `BUILD FAILED: ace` | Text and background colors too close | [Ace failures](#ace-failures) |
-| `word count: FAILED: text lost or added in conversion` | Text lost or duplicated in conversion | [Word-count gate](#word-count-gate) |
+| `word count: FAILED: text lost or added beyond 2% or 25 words per file` | Text lost or duplicated in conversion | [Word-count gate](#word-count-gate) |
+| `build error: pandoc did not finish within 1800 s and was stopped` | A tool hung, or the book is very large for this machine | [Time limits](#time-limits) |
+| `install failed: another \`mdbindery install-tools\` is running` | A second install into the same tool home, or a lock file left by a killed install | Wait for the other install, or delete the named lock file |
 | `ERROR RSC-032: Fallback must be provided for foreign resources` | Unsupported image format such as BMP | Convert the image to JPEG or PNG |
 | `ERROR RSC-006: Remote resource reference is not allowed` | A stylesheet or font loaded from the web | [EPUBCheck messages](#epubcheck-messages) |
 | `build error: 03-latin.md is not valid UTF-8 (byte 17); re-save it as UTF-8` | The file uses another encoding | Re-save it as UTF-8 (check code MB105) |
@@ -65,7 +67,7 @@ The installers put the `mdbindery` command in `~/.local/bin` (Windows: `%USERPRO
 mdbindery looks for its tools in `MDBINDERY_HOME` on every run, not only during installation. If you installed with a custom `MDBINDERY_HOME` and a new terminal does not have it set, mdbindery looks in the default folder and finds nothing there:
 
 ```
-mdbindery 0.1.0
+mdbindery 0.1.1
 tool home: .../.local/share/mdbindery (default; set MDBINDERY_HOME to use another)
 --- tools
 pandoc     missing
@@ -201,7 +203,7 @@ Causes and fixes:
 - Missing browser build (an interrupted install, or a deleted `tools/puppeteer/`): run `mdbindery install-tools`. The browser step runs every time, even when the npm packages are already installed.
 - A different tool home: the tools were installed under one `MDBINDERY_HOME` and mdbindery now runs with another. `mdbindery doctor` prints the one in use.
 - Containers: Docker gives containers 64 MB of `/dev/shm` by default, which can crash Chrome. Start the container with `--shm-size=1g`. (`tools/puppeteer-config.json` is rewritten by mdbindery on every run, so extra Chrome flags added there do not last.)
-- The Chrome sandbox: mermaid-cli and `preview` keep Chrome's sandbox on where it works. When Chrome fails with a message about the sandbox (common on systems that restrict unprivileged user namespaces), mdbindery retries without it and writes `<tool home>/tools/no-sandbox`, so later runs skip the sandbox; as root, and with `CI` or `MDBINDERY_NO_SANDBOX` set, the sandbox is off from the start. If you suspect the sandbox but the error does not mention it, run once with `MDBINDERY_NO_SANDBOX=1` to compare. Ace always runs its Chrome without the sandbox, so an Ace failure is not a sandbox problem. Delete `tools/no-sandbox` to try the sandbox again.
+- The Chrome sandbox: mermaid-cli and `preview` keep Chrome's sandbox on where it works. When Chrome fails with a message about the sandbox (common on systems that restrict unprivileged user namespaces), mdbindery retries without it. For charts it logs this and writes `<tool home>/tools/no-sandbox`, so later runs skip the sandbox; `preview` warns and turns the sandbox off for that run only, because it opens EPUBs that may come from someone else; as root, and with `CI` or `MDBINDERY_NO_SANDBOX` set, the sandbox is off from the start. If you suspect the sandbox but the error does not mention it, run once with `MDBINDERY_NO_SANDBOX=1` to compare. Ace always runs its Chrome without the sandbox, so an Ace failure is not a sandbox problem. Delete `tools/no-sandbox` to try the sandbox again.
 
 To get the rest of the build while you fix Ace, build with `--no-ace`.
 
@@ -293,7 +295,7 @@ For any other message, find the element at the reported path and line, then trac
 The gate compares, for each file, the words in the prepared Markdown with the words in the EPUB ([building.md](building.md#wordcount)). A failing log line names up to five files, worst first:
 
 ```
-  word count: FAILED: text lost or added in conversion (limit 2% and 25 words): 02-setup.md 44 -> 17 words (-61.4%)
+  word count: FAILED: text lost or added beyond 2% or 25 words per file: 02-setup.md 44 -> 17 words (-61.4%)
 ```
 
 The failing files are listed in `reports/build.json` under `gates.wordcount.failing`, and the numbers for every file under `gates.wordcount.files` (`source`, `epub`, `diff`). A negative `diff` means the EPUB has fewer words than the source, a positive one more. `mdbindery check --build` reports the same as MB902.
@@ -303,7 +305,15 @@ Causes:
 - HTML whose text the conversion drops. In the example above, a `<textarea>` held 27 words that pandoc's HTML reader leaves out; the file's log line also says `HTML removed: <textarea>x1`.
 - Raw HTML that is read differently for the two counts, for example a `<div>` without its `</div>`, or an HTML block followed by Markdown without a blank line in between (GitHub's rules then make the Markdown part of the HTML block). `mdbindery check` lists unsupported and removed tags (MB500, MB501).
 
+A chapter with cards fails like any other. For such a file, `build.json` also has `card_labels` (the repeated column labels the gate subtracted) and `compared` (the EPUB count after that), and the log shows `compared`.
+
 To find the difference, build with `--keep-work`, open the prepared file `kNN.md` from the work folder next to the chapter's XHTML from the EPUB, and look for the first place where they differ. `wordcount_tolerance` and `wordcount_min_words` ([configuration.md](configuration.md#validation-gates)) adjust the threshold; raise them only when you know where the difference comes from.
+
+### Time limits
+
+Every external program runs with a time limit ([building.md](building.md#the-pipeline)). When one runs out, mdbindery stops the program and all its child processes and ends the build with exit status 2: `build error: pandoc did not finish within 1800 s and was stopped (set MDBINDERY_TIMEOUT_SCALE=2 or more for very large books or slow machines)`. `reports/build.json` names the stage that stopped (`failed_stage`). A chart that runs out of time becomes a placeholder and fails the charts gate; EPUBCheck or Ace running out of time fails its gate.
+
+If the book is simply large or the machine slow, raise every limit with `MDBINDERY_TIMEOUT_SCALE=3 mdbindery build`. If a tool hangs on a small book, run `mdbindery doctor`: a tool that hangs there is broken or blocked, often by Chrome that cannot start ([Puppeteer and Chrome launch failures](#puppeteer-and-chrome-launch-failures)).
 
 ## Reproducible output
 

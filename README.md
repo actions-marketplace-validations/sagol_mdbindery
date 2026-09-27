@@ -50,7 +50,7 @@ irm https://raw.githubusercontent.com/sagol/mdbindery/main/install/install.ps1 |
 
 The installer needs nothing preinstalled. It fetches [uv](https://github.com/astral-sh/uv), installs mdbindery in an isolated environment (with its own Python if needed), then downloads pandoc, EPUBCheck, a Java runtime if none is present, Node.js, mermaid-cli, and Ace into a per-user folder. pandoc, EPUBCheck, Node.js, and uv are pinned to exact versions and verified against SHA-256 checksums; the Java runtime comes from Eclipse Temurin's API with its published checksum; mermaid-cli and Ace are pinned by version. Nothing needs administrator rights, and nothing asks questions, so the same commands work in scripts and CI.
 
-To pin a release, pass its tag: `curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/v0.1.0/install/install.sh | bash -s -- --ref v0.1.0`.
+To pin a release, pass its tag: `curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/v0.1.1/install/install.sh | bash -s -- --ref v0.1.1`.
 
 Other ways to install:
 
@@ -58,13 +58,13 @@ Other ways to install:
 |---|---|
 | PyPI (pipx, uv, pip) | `pipx install mdbindery` or `uv tool install mdbindery`, then `mdbindery install-tools` |
 | Homebrew (macOS, Linux) | `brew install sagol/tap/mdbindery`, then `mdbindery install-tools` |
-| GitHub Actions | `- uses: sagol/mdbindery@v0.1.0`, then run `mdbindery` in later steps |
+| GitHub Actions | `- uses: sagol/mdbindery@v0.1.1`, then run `mdbindery` in later steps |
 | Release files | wheel, source archive, and both installers on the [releases page](https://github.com/sagol/mdbindery/releases) |
 
 In a workflow:
 
 ```yaml
-- uses: sagol/mdbindery@v0.1.0      # installs mdbindery and its tools, cached between runs
+- uses: sagol/mdbindery@v0.1.1      # installs mdbindery and its tools, cached between runs
 - run: mdbindery build path/to/book  # exit 1 when a gate fails
 ```
 

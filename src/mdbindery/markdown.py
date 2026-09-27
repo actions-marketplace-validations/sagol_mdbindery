@@ -201,41 +201,36 @@ def is_setext(lines, i):
     return i + 1 < len(lines) and SETEXT_RE.match(lines[i + 1]) is not None and not HEADING_RE.match(lines[i])
 
 
-def drop_sections(lines, names):
-    """Remove sections whose heading text is in names (with all their subsections)."""
+def dropped_spans(lines, names):
+    """Line indexes that belong to sections named in names (with their subsections), and the names found."""
     if not names:
-        return lines, []
+        return set(), []
     names = set(names)
     heads = {i: (lvl, t) for i, lvl, t in headings(lines)}
-    out, dropped, skip = [], [], None
-    for i, ln in enumerate(lines):
+    spans, found, skip = set(), [], None
+    for i in range(len(lines)):
         if i in heads:
             lvl, t = heads[i]
             if skip is not None and lvl <= skip:
                 skip = None
             if skip is None and t in names:
                 skip = lvl
-                dropped.append(t)
-        if skip is None:
-            out.append(ln)
-    return out, dropped
+                found.append(t)
+        if skip is not None:
+            spans.add(i)
+    return spans, found
+
+
+def drop_sections(lines, names):
+    """Remove sections whose heading text is in names (with all their subsections)."""
+    spans, found = dropped_spans(lines, names)
+    return [ln for i, ln in enumerate(lines) if i not in spans], found
 
 
 def mask_dropped(lines, sections, line_patterns):
     """Blank out lines the build will drop, keeping line numbers intact (for check)."""
-    out = list(lines)
-    if sections:
-        heads = {i: (lvl, t) for i, lvl, t in headings(lines)}
-        skip = None
-        for i in range(len(lines)):
-            if i in heads:
-                lvl, t = heads[i]
-                if skip is not None and lvl <= skip:
-                    skip = None
-                if skip is None and t in set(sections):
-                    skip = lvl
-            if skip is not None:
-                out[i] = ''
+    spans, _ = dropped_spans(lines, sections)
+    out = ['' if i in spans else ln for i, ln in enumerate(lines)]
     res = [re.compile(p) for p in line_patterns]
     if res:
         for i, _ in iter_text_lines(lines):
@@ -314,15 +309,24 @@ def _select(text, spec):
     return '\n'.join(l for l in lines if not ANCHOR_LINE_RE.search(l))
 
 
-def expand_includes(text, base_dir, root, depth=0):
+INCLUDE_MAX_DEPTH = 10              # nested includes
+INCLUDE_MAX_DIRECTIVES = 5000       # expanded directives per file
+INCLUDE_MAX_BYTES = 20 * 1024 * 1024  # expanded text per file
+
+
+def expand_includes(text, base_dir, root, origin=None, _state=None, _stack=None):
     """Expand mdBook {{#include}}, {{#rustdoc_include}}, {{#playground}}; drop {{#title}}.
 
-    Paths are relative to base_dir and must stay inside root. Returns (text, expanded, errors).
+    Paths are relative to base_dir and must stay inside root. Cycles, the depth limit, and the size
+    budget are reported as errors and leave the directive in place. Returns (text, expanded, errors).
     """
-    errors, count = [], 0
+    state = _state if _state is not None else {'count': 0, 'bytes': 0, 'errors': []}
+    errors = state['errors']
+    if _stack is None:
+        _stack = (Path(origin).resolve(),) if origin else ()
+        state['top'] = len(_stack)  # the including file itself is not a level of nesting
 
     def repl(m):
-        nonlocal count
         if m.group(1):  # \{{#include}} is a literal
             return m.group(0)[1:]
         kind, arg = m.group(2), m.group(3).strip()
@@ -339,6 +343,16 @@ def expand_includes(text, base_dir, root, depth=0):
         if not p.is_file():
             errors.append((m.group(0), 'file not found'))
             return m.group(0)
+        if p in _stack:
+            chain = ' -> '.join(q.name for q in _stack + (p,))
+            errors.append((m.group(0), f'include cycle: {chain}'))
+            return m.group(0)
+        if len(_stack) - state['top'] >= INCLUDE_MAX_DEPTH:
+            errors.append((m.group(0), f'includes nested deeper than {INCLUDE_MAX_DEPTH} levels'))
+            return m.group(0)
+        if state['count'] >= INCLUDE_MAX_DIRECTIVES:
+            errors.append((m.group(0), f'more than {INCLUDE_MAX_DIRECTIVES} includes in one file'))
+            return m.group(0)
         try:
             body = p.read_text(encoding='utf-8')
         except (OSError, UnicodeDecodeError) as e:
@@ -348,14 +362,17 @@ def expand_includes(text, base_dir, root, depth=0):
         if sel is None:
             errors.append((m.group(0), f'anchor not found: {spec}'))
             return m.group(0)
-        if depth < 5 and '{{#' in sel:
-            sel, n, errs = expand_includes(sel, p.parent, root, depth + 1)
-            count += n
-            errors.extend(errs)
-        count += 1
+        if '{{#' in sel:
+            sel = expand_includes(sel, p.parent, root, None, state, _stack + (p,))[0]
+        state['bytes'] += len(sel.encode('utf-8'))
+        if state['bytes'] > INCLUDE_MAX_BYTES:
+            errors.append((m.group(0), f'included text exceeds {INCLUDE_MAX_BYTES // 1048576} MB in one file'))
+            return m.group(0)
+        state['count'] += 1
         return sel
 
-    return INCLUDE_RE.sub(repl, text), count, errors
+    out = INCLUDE_RE.sub(repl, text)
+    return out, state['count'], errors
 
 
 def hide_rust_lines(code_lines):
@@ -404,7 +421,7 @@ def mermaid_hash(src):
 
 # ------------------------------------------------------------------ pre-pass
 
-def prepass(text, fcfg, opts, render_mermaid=None, base_dir=None, root=None):
+def prepass(text, fcfg, opts, render_mermaid=None, base_dir=None, root=None, origin=None):
     """Prepare one file's Markdown for pandoc.
 
     render_mermaid(src, alt) -> list of Markdown lines replacing the code block.
@@ -414,7 +431,7 @@ def prepass(text, fcfg, opts, render_mermaid=None, base_dir=None, root=None):
     text = text.replace('\r\n', '\n').replace('\r', '\n').lstrip('﻿')
     stats = {'mermaid': 0, 'dropped_lines': 0, 'includes': 0, 'include_errors': []}
     if base_dir is not None and '{{#' in text:
-        text, stats['includes'], stats['include_errors'] = expand_includes(text, base_dir, root or base_dir)
+        text, stats['includes'], stats['include_errors'] = expand_includes(text, base_dir, root or base_dir, origin)
     lines = text.split('\n')
     lines, dropped = drop_sections(lines, fcfg.get('drop_sections') or [])
     stats['dropped_sections'] = dropped

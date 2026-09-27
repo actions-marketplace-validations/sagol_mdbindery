@@ -34,7 +34,7 @@ MDBINDERY_REQUIRE_TOOLS=1 python -m pytest    # fails them instead, as CI does
 python -m pytest tests/test_markdown.py       # pure Python, no tools needed
 ```
 
-Without pandoc, only the tests that need no external tool run. The build tests also need EPUBCheck; none of them needs Ace. Set `MDBINDERY_REQUIRE_TOOLS=1` before you send a change, so a missing tool cannot turn a failure into a skip.
+Without pandoc, only the tests that need no external tool run. With pandoc alone, every test runs except the one EPUBCheck integration test; the other build tests validate with EPUBCheck when it is installed and check content only when it is not. None of them needs Ace. Set `MDBINDERY_REQUIRE_TOOLS=1` before you send a change, so a missing tool cannot turn a failure into a skip.
 
 A build writes into the book (`dist/` and the identifier in `mdbindery.yaml`). Build copies, never the files under `examples/` or `tests/fixtures/`:
 

@@ -57,7 +57,7 @@ mdbindery: writing-a-book-in-markdown (5 files) from .../sample-book
   built .../sample-book/dist/writing-a-book-in-markdown.epub (108 KB)
   EPUBCheck: no messages
   Ace: 0 violation(s), 0 blocking
-  word count: no text lost or duplicated
+  word count: every file within 2% or 25 words of its source
 BUILD OK
 ```
 
@@ -81,7 +81,7 @@ mdbindery: broken-book (2 files) from .../broken-book
     ERROR RSC-032: Fallback must be provided for foreign resources, but found none for resource "EPUB/media/file1.bmp" of type "image/x-ms-bmp". [EPUB/text/ch001.xhtml:21]
   Ace: 1 violation(s), 0 blocking
     moderate heading-order x1
-  word count: no text lost or duplicated
+  word count: every file within 2% or 25 words of its source
 BUILD FAILED: charts, links, images, epubcheck (details: .../broken-book/dist/reports/build.json)
 ```
 
@@ -118,7 +118,9 @@ BUILD FAILED: charts, links, images, epubcheck (details: .../broken-book/dist/re
 10. Write the EPUB. The book metadata (title, subtitle, authors, description, rights, publisher, subjects, series) goes into the document as literal text, so `*`, `_`, `@`, or `<div>` in a title stays as typed. `pandoc -f json -t epub3` then writes the book into the work folder with the stylesheet, the embedded cover, `--split-level` and `--toc-depth` from the options, a table of contents (`options.toc`), syntax highlighting (`options.highlight_style`, `monochrome` by default), and any `options.embed_fonts`. mdbindery sets `SOURCE_DATE_EPOCH` for this step. pandoc warnings appear in the log as `pandoc: ...` and are stored in `build.json` under `pandoc_warnings`.
 11. Post-process the package. mdbindery adds schema.org accessibility metadata to the package document: `accessMode` `textual` (and `visual` when the book has images, rendered charts included), `accessModeSufficient` `textual`, the features `tableOfContents`, `readingOrder`, `structuralNavigation`, and `alternativeText` (only when every image has alt text), `accessibilityHazard` `none`, the accessibility summary, and `dcterms:conformsTo` when `options.conformance_claim` is set. Each endnote gets its number, linked back to the reference in the text. The ZIP container is rewritten in a fixed form (see [Reproducible builds](#reproducible-builds)) into `<slug>.epub.part` in the output folder and renamed to `<slug>.epub` only when it is complete, so an interrupted build never leaves a half-written file under the final name.
 12. Run the validation gates. EPUBCheck, Ace, and the word-count check run on the finished file.
-13. Write the reports. `reports/build.json` is written, and the command writes the log to `reports/build.log`.
+13. Write the reports. `reports/build.json` is written, and the command writes the log to `reports/build.log`. A build that stops with an error writes both too (see [Outputs](#outputs)).
+
+Every external program runs with a time limit and is stopped with all its child processes when the limit passes or you press Ctrl+C: 3 minutes per Mermaid chart, 5 minutes per file for the word count, 20 minutes for EPUBCheck, 30 minutes for Ace and for writing the EPUB, 15 minutes for other pandoc runs. On a slow machine or a very large book, `MDBINDERY_TIMEOUT_SCALE=3` triples every limit.
 
 The EPUB is written even when a gate fails, so you can open it and look at the problem. Do not publish a file from a failed build.
 
@@ -139,14 +141,14 @@ dist/
 
 `<slug>` is `slug` from the configuration, or the title in lowercase with every run of characters other than letters and digits replaced by a hyphen (`Writing a Book in Markdown` becomes `writing-a-book-in-markdown`). Letters of any script are kept, so a Russian title gives a Cyrillic file name; set `slug` if you want a Latin one.
 
-- `build.json` holds `gates` (per gate, the result `pass`, `warn`, `fail`, or `skipped`, and its details), `files` (per file: pre-pass statistics, images, removed HTML, external links, math), `links` (unresolved and approximately matched links), `pandoc_warnings`, the paths of the EPUB and the cover, `ok`, and `failed_gates`. The format is described in [design.md](design.md#buildjson).
+- `build.json` holds `gates` (per gate, the result `pass`, `warn`, `fail`, or `skipped`, and its details), `files` (per file: pre-pass statistics, images, removed HTML, external links, math), `links` (unresolved and approximately matched links), `pandoc_warnings`, the paths of the EPUB and the cover, `ok`, `failed_gates`, `skipped_gates`, and `warning_gates`. It also records what made the book: `provenance` (the versions of mdbindery, Python, pandoc, EPUBCheck, and Ace, the git commit of the source, and the effective options) and `timings` (seconds per stage). Attach it to a bug report. The format is described in [design.md](design.md#buildjson).
 - `build.log` has the same lines the console shows without `-q`.
 - `epubcheck.json` is missing when EPUBCheck could not run. The build log and `build.json` show at most the first 50 EPUBCheck messages; this file has all of them.
 - `ace/report.html` opens in a browser and lists each accessibility violation with the element that caused it.
 
 At the start of each build, mdbindery deletes the files it wrote into `reports/` last time (`build.json`, `build.log`, `epubcheck.json`, and `ace/`), so a stale report never sits next to a new book. Other files you keep in `reports/` stay. The rest of the output folder is not cleaned: an EPUB with an old slug stays until you delete it.
 
-When the build stops with exit status 2, no EPUB, `build.json`, or `build.log` is written. If it stopped after the pipeline started (a listed file not found, an unreadable cover), the previous build's reports have already been removed, while the previous EPUB is still there.
+When the build stops with exit status 2 before it starts (a configuration error, pandoc not found, an empty reading order, `-o` naming a file), nothing is written. When it stops later, for example on a chapter that is not UTF-8, an unreadable cover, or a tool that ran past its time limit, `build.json` describes the failure: `ok: false`, `failed_stage` (`analysis`, `identifier`, `cover`, `epub`, `epubcheck`, `ace`, or `wordcount`), `error`, the timings of the stages that finished, and `artifact`. `artifact` is `none`, or a warning that the EPUB in the output folder is from an earlier build. `build.log` has the log up to the error.
 
 ## Gates
 
@@ -160,7 +162,7 @@ A gate that fails makes the build fail (exit status 1, `BUILD FAILED: <gates> (d
 | `includes` | An mdBook directive could not be expanded. The gate appears in `build.json` only in this case | Never | Never |
 | `epubcheck` | EPUBCheck reports an `ERROR` or `FATAL` message, cannot run (no Java 11+ or no EPUBCheck), or crashes without writing a report | Never | `options.epubcheck: false` |
 | `ace` | Ace reports a `critical` or `serious` violation whose rule is not in `options.ace_waivers`, or Ace is installed but produces no report | Ace is not installed | `--no-ace` or `options.ace: false` |
-| `wordcount` | A file's word count in the EPUB differs from its source by more than `wordcount_tolerance` and by more than `wordcount_min_words` words | Never | Never; files listed under `options.cards.files` are counted but never fail |
+| `wordcount` | A file's word count in the EPUB differs from its source by more than `wordcount_tolerance` and by more than `wordcount_min_words` words | Never | Never |
 
 ### links
 
@@ -212,7 +214,7 @@ Unsupported formats such as BMP pass this gate; EPUBCheck rejects them (RSC-032)
 
 ### includes
 
-A directive that could not be expanded stays in the text as typed and is logged with the reason (`file not found`, `outside the repository`, `anchor not found: <name>`, or `cannot read: ...`):
+A directive that could not be expanded stays in the text as typed and is logged with the reason: `file not found`, `outside the repository`, `anchor not found: <name>`, `cannot read: ...`, or one of the limits that keep a bad include from blowing up a book: `include cycle: ch1.md -> a.md -> a.md`, `includes nested deeper than 10 levels`, `more than 5000 includes in one file`, `included text exceeds 20 MB in one file`.
 
 ```
   INCLUDE in 01-intro.md not expanded (file not found): {{#include listings/missing.rs}}
@@ -290,22 +292,26 @@ This gate catches text lost or duplicated in conversion, usually by HTML that th
 
 URLs are left out of both counts. A word starts with a letter or a digit and runs through the letters, digits, underscores, apostrophes, and hyphens that follow.
 
-A file fails when the difference is larger than `wordcount_tolerance` (default `0.02`, 2%) and also larger than `wordcount_min_words` (default 25 words). The second condition is a floor: a difference of 25 words or fewer never fails, so short files do not fail on a few words. Files under `options.cards.files` never fail, because cards repeat the column labels.
+A file fails when the difference is larger than `wordcount_tolerance` (default `0.02`, 2%) and also larger than `wordcount_min_words` (default 25 words). The second condition is a floor: a difference of 25 words or fewer never fails, so short files do not fail on a few words.
+
+Files with cards (`options.cards.files`) are checked like any other. Cards repeat a column label on every card and drop the header row, so the gate subtracts the repeated labels and adds back the header words before it compares. The difference is exact when no other text changed.
+
+The count is a tolerance check, not a comparison of the text. It cannot see a word replaced by another word, or text moved within a file, and a loss smaller than the limit passes.
 
 The log line on success names the largest difference only when some file's difference is above the floor:
 
 ```
-  word count: no text lost or duplicated
-  word count: no text lost or duplicated; largest difference 2.0% in 02-structure.md
+  word count: every file within 2% or 25 words of its source
+  word count: every file within 2% or 25 words of its source; largest difference 2.0% in 02-structure.md
 ```
 
 On failure it names up to five files, worst first, with the source and EPUB counts and the sign of the difference (a `<textarea>` loses its text in this example):
 
 ```
-  word count: FAILED: text lost or added in conversion (limit 2% and 25 words): 02-setup.md 44 -> 17 words (-61.4%)
+  word count: FAILED: text lost or added beyond 2% or 25 words per file: 02-setup.md 44 -> 17 words (-61.4%)
 ```
 
-`build.json` has the counts per file under `gates.wordcount.files` (`source`, `epub`, `diff`) and the failing files under `gates.wordcount.failing`.
+`build.json` has the counts per file under `gates.wordcount.files` (`source`, `epub`, `diff`, and for files with cards `card_labels` and `compared`, the EPUB count after the label adjustment) and the failing files under `gates.wordcount.failing`.
 
 ## Reproducible builds
 
@@ -313,7 +319,7 @@ Building the same commit twice with the same tools gives byte-identical EPUB fil
 
 - It takes one timestamp for the build: the time of the last commit in the git repository that contains the book folder. If the folder is not in a git repository (or `git` is missing), it uses `metadata.date` when it has the form `YYYY-MM-DD`, and otherwise the modification time of the newest source file. Uncommitted changes do not change the git timestamp. With `date: git` (the default), the publication date in the book is this timestamp's UTC date.
 - It passes the timestamp to pandoc as `SOURCE_DATE_EPOCH`, which sets the modification date in the package metadata. Timestamps before 1980-01-01 are raised to that date, because ZIP dates start in 1980; a book dated earlier still builds.
-- It rewrites the ZIP container: `mimetype` first and uncompressed, every other entry deflated, every entry dated with the build timestamp (1980-01-01 if there is none), given permissions 0644, and marked as made on Unix, so the bytes are the same on Linux, macOS, and Windows. Blank lines are removed from the package document.
+- It rewrites the ZIP container: `mimetype` first and uncompressed, every other entry deflated, every entry dated with the build timestamp (1980-01-01 if there is none; ZIP dates end in 2107), given permissions 0644, and marked as made on Unix, so the bytes are the same on Linux, macOS, and Windows. Blank lines are removed from the package document.
 - The identifier must be stable, so keep an `identifier:` line in the configuration. With an empty line, the first build fills it in. Without the line, every build generates a new random identifier and the files differ.
 
 The reports are not reproducible: they contain absolute paths, temporary folder names, and dates. A cover generated by mdbindery depends on the fonts found on the machine, and other versions of pandoc, Pillow, or mermaid-cli write other bytes, so compare builds made with the same tools.
@@ -357,7 +363,7 @@ An id that does not exist on the page is not an error; the command captures the 
 WARN no element with id "k02-no-such" in text/ch003.xhtml; captured the top of the page
 ```
 
-Chrome runs with its sandbox where the system allows it (see [installation.md](installation.md#headless-chrome)). Chrome renders the XHTML with the book's stylesheet, which is close to what reading apps show but not identical, so check the final file in a real reader too.
+`preview` treats the EPUB as untrusted, since it may come from someone else: scripts in the book do not run, and a page may load only files from the EPUB itself (and `data:` URLs), never other files on your computer or anything from the network. EPUBs with more than 50,000 files or more than 2 GB unpacked are refused. Chrome runs with its sandbox where the system allows it (see [installation.md](installation.md#headless-chrome)). If the sandbox cannot start, `preview` prints a warning and takes that run's screenshots without it. Chrome renders the XHTML with the book's stylesheet, which is close to what reading apps show but not identical, so check the final file in a real reader too.
 
 ## Uploading to stores
 

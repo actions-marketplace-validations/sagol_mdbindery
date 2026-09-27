@@ -57,14 +57,19 @@ def cmd_build(a):
         lines.append(msg)
         if not a.quiet:
             _out(msg)
+    reports = (Path(a.out) if a.out else cfg.base / cfg['output_dir']).resolve() / 'reports'
+
+    def save_log():  # also after a failed build, next to its build.json
+        if reports.is_dir():
+            (reports / 'build.log').write_text('\n'.join(lines) + '\n', encoding='utf-8')
     try:
         s = build(cfg, out_dir=a.out, run_ace=not a.no_ace, keep_work=a.keep_work, log=log)
     except BuildError as e:
+        lines.append(f'build error: {e}')
+        save_log()
         _err(f'build error: {e}')
         return 2
-    rep = Path(s['epub']).parent / 'reports' if s.get('epub') else None
-    if rep and rep.is_dir():
-        (rep / 'build.log').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+    save_log()
     if a.quiet:
         _out(lines[-1] if lines else '')
     return 0 if s['ok'] else 1
@@ -175,7 +180,7 @@ def cmd_preview(a):
         _err('preview error: --width and --height must be between 200 and 4000/8000 CSS pixels')
         return 2
     try:
-        files = preview(a.epub, a.out, a.pages, a.width, a.height, a.full)
+        files = preview(a.epub, a.out, a.pages, a.width, a.height, a.full, warn=_err)
     except (RuntimeError, OSError, ValueError) as e:
         _err(f'preview error: {e}')
         return 2

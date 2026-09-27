@@ -2,9 +2,11 @@
 import copy
 import datetime
 import difflib
+import math
 import posixpath
 import re
 import subprocess
+from collections import Counter
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -46,12 +48,23 @@ DEFAULTS = {
     },
 }
 
+# the default accessibility summary: a base sentence and an ending chosen by what the book contains
 DEFAULT_A11Y_SUMMARY = {
     'en': ('This publication has a navigable table of contents and a logical reading order; headings, '
-           'lists, and tables are marked up structurally, and images carry text alternatives.'),
+           'lists, and tables are marked up structurally',
+           {'all': ', and images carry text alternatives.', 'none': '.',
+            'some': '; some images have no text alternative.'}),
     'ru': ('Публикация содержит оглавление и логический порядок чтения; заголовки, списки и таблицы '
-           'размечены структурно, у изображений есть текстовые описания.'),
+           'размечены структурно',
+           {'all': ', у изображений есть текстовые описания.', 'none': '.',
+            'some': '; не у всех изображений есть текстовые описания.'}),
 }
+
+
+def default_summary(lang, has_images, all_alt):
+    base, endings = DEFAULT_A11Y_SUMMARY.get(lang, DEFAULT_A11Y_SUMMARY['en'])
+    return base + endings['none' if not has_images else 'all' if all_alt else 'some']
+
 
 FILE_KEYS = {'file', 'role', 'title', 'drop_sections', 'mermaid_alt', 'key'}
 SKIP_FILES = {'changelog', 'contributing', 'code_of_conduct', 'code-of-conduct', 'security', 'license',
@@ -166,18 +179,21 @@ def matter_group(stem):
     return 1, 0
 
 
-def discover_files(src):
-    """Reading order when the config lists no files. Returns (files, how the order was found)."""
+def discover_files(src, ok=lambda p: True):
+    """Reading order when the config lists no files. Returns (files, how the order was found).
+
+    ok(path) decides whether a file may be read (untrusted repositories: only inside the checkout).
+    """
     base = src / 'chapters' if (src / 'chapters').is_dir() else src
-    readme = next((p for p in src.glob('*') if p.is_file() and p.name.lower() == 'readme.md'), None)
-    mds = [p for p in base.glob('*.md') if p.is_file()]
+    readme = next((p for p in src.glob('*') if p.is_file() and p.name.lower() == 'readme.md' and ok(p)), None)
+    mds = [p for p in base.glob('*.md') if p.is_file() and ok(p)]
     body = [p for p in mds if p.name.lower() != 'readme.md' and p.stem.lower() not in SKIP_FILES]
     rels = {p.relative_to(src).as_posix(): p for p in body}
 
     ordered, how = None, 'file names'
     for toc in TOC_FILES:
         t = src / toc
-        if t.is_file():
+        if t.is_file() and ok(t):
             links = [r for r in linked_files(t, src) if r.lower() != 'readme.md' or toc == 'SUMMARY.md']
             if len(links) >= (1 if toc == 'SUMMARY.md' else 2):
                 ordered, how = links, toc
@@ -229,11 +245,11 @@ def read_book_toml(path):
         return out
 
 
-def find_cover(src):
+def find_cover(src, ok=lambda p: True):
     for d in IMAGE_DIRS:
         for n in COVER_NAMES:
             p = src / d / n
-            if p.is_file():
+            if p.is_file() and ok(p):
                 return str(p.relative_to(src)).replace('\\', '/')
     return ''
 
@@ -272,11 +288,11 @@ def license_name(t):
     return ''
 
 
-def detect_rights(*folders):
+def detect_rights(*folders, ok=lambda p: True):
     for src in folders:
         for name in ('LICENSE', 'LICENSE.md', 'LICENSE.txt', 'LICENCE', 'LICENCE.md', 'COPYING', 'COPYING.md'):
             p = src / name
-            if p.is_file():
+            if p.is_file() and ok(p):
                 label = license_name(p.read_text(encoding='utf-8', errors='replace')[:6000])
                 if label:
                     return label
@@ -353,7 +369,7 @@ class Config:
         return self.data['metadata']
 
 
-def _str(value, name, allow_empty=True):
+def _str(value, name):
     if value is None:
         return ''
     if isinstance(value, bool):
@@ -370,15 +386,29 @@ def _str(value, name, allow_empty=True):
 def _num(value, name, kind=int, lo=None, hi=None):
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         try:
-            value = kind(str(value))
+            value = float(str(value))
         except (TypeError, ValueError):
             raise ConfigError(f'{name} must be a number, not {value!r}')
+    if not math.isfinite(value):
+        raise ConfigError(f'{name} must be a finite number, not {value}')
     if kind is int and value != int(value):
         raise ConfigError(f'{name} must be a whole number')
     value = kind(value)
     if (lo is not None and value < lo) or (hi is not None and value > hi):
         raise ConfigError(f'{name} must be between {lo} and {hi}')
     return value
+
+
+def valid_date(text):
+    """YYYY, YYYY-MM, or YYYY-MM-DD, and a real calendar date."""
+    for fmt, pattern in (('%Y-%m-%d', r'\d{4}-\d{2}-\d{2}'), ('%Y-%m', r'\d{4}-\d{2}'), ('%Y', r'\d{4}')):
+        if re.fullmatch(pattern, text):
+            try:
+                datetime.datetime.strptime(text, fmt)
+                return True
+            except ValueError:
+                return False
+    return False
 
 
 def _bool(value, name):
@@ -406,9 +436,11 @@ def validate(data):
     if isinstance(md.get('lang'), bool):
         raise ConfigError("metadata.lang must be a language code in quotes, e.g. lang: 'no' (YAML reads no as false)")
     md['lang'] = _str(md.get('lang'), 'metadata.lang').strip() or 'en-US'
+    if isinstance(md.get('date'), datetime.datetime):
+        md['date'] = md['date'].date()
     md['date'] = _str(md.get('date'), 'metadata.date').strip() or 'git'
-    if md['date'] != 'git' and not re.match(r'^\d{4}(-\d{2}(-\d{2})?)?', md['date']):
-        raise ConfigError("metadata.date must be 'git' or a date like 2026-09-26")
+    if md['date'] != 'git' and not valid_date(md['date']):
+        raise ConfigError("metadata.date must be 'git' or a real date like 2026-09-26 (or 2026-09, or 2026)")
     md['authors'] = _str_list(md.get('authors') or [], 'metadata.authors')
     md['subjects'] = _str_list(md.get('subjects') or [], 'metadata.subjects')
     for k in ('slug', 'source_url', 'output_dir', 'source_dir'):
@@ -486,6 +518,9 @@ def load(target=None, config_path=None, name_hint=None, trusted=True, repo_root=
     if target is None:
         target = Path(config_path).resolve() if config_path else Path.cwd()
     target = Path(target).resolve()
+    # untrusted repositories: every file read must resolve (symlinks included) inside the checkout
+    guard = Path(repo_root).resolve() if repo_root else (target if target.is_dir() else target.parent)
+    ok = (lambda p: True) if trusted else (lambda p: contained(p, guard))
     path = None
     if config_path:
         path = Path(config_path).resolve()
@@ -501,6 +536,8 @@ def load(target=None, config_path=None, name_hint=None, trusted=True, repo_root=
     if path:
         if not path.is_file():
             raise ConfigError(f'config file not found: {path}')
+        if not ok(path):
+            raise ConfigError(f'{path.name} points outside the repository')
         try:
             user = yaml.safe_load(path.read_text(encoding='utf-8')) or {}
         except yaml.YAMLError as e:
@@ -529,14 +566,15 @@ def load(target=None, config_path=None, name_hint=None, trusted=True, repo_root=
 
     # mdBook: book.toml names the source folder, SUMMARY.md the reading order
     toml, book_root = {}, None
-    if (source / 'book.toml').is_file():
+    if (source / 'book.toml').is_file() and ok(source / 'book.toml'):
         toml = read_book_toml(source / 'book.toml')
         src_dir = source / str(toml.get('src') or 'src')
         if (src_dir / 'SUMMARY.md').is_file():  # an mdBook needs its SUMMARY.md
             book_root = source
             source = src_dir.resolve()
             inferred.append('source_dir (book.toml)')
-    elif (source / 'SUMMARY.md').is_file() and (source.parent / 'book.toml').is_file():
+    elif (source / 'SUMMARY.md').is_file() and (source.parent / 'book.toml').is_file() \
+            and ok(source.parent / 'book.toml'):
         toml, book_root = read_book_toml(source.parent / 'book.toml'), source.parent.resolve()
     if not source.is_dir():
         raise ConfigError(f'source folder not found: {source}')
@@ -573,7 +611,7 @@ def load(target=None, config_path=None, name_hint=None, trusted=True, repo_root=
         raise ConfigError('files must be a list')
     order_source = ''
     if not files:
-        files, order_source = discover_files(source)
+        files, order_source = discover_files(source, ok)
         inferred.append('files (reading order)')
     norm = []
     for i, f in enumerate(files):
@@ -589,6 +627,8 @@ def load(target=None, config_path=None, name_hint=None, trusted=True, repo_root=
         if rel is None:
             raise ConfigError(f"files entry {f['file']}: use a path relative to the book folder "
                               '(no absolute paths, no ..; set source_dir instead)')
+        if not ok(source / rel):
+            raise ConfigError(f'files entry {rel} points outside the repository')
         f['file'] = rel
         f.setdefault('role', 'chapter')
         f.setdefault('key', f'k{i:02d}')
@@ -602,11 +642,11 @@ def load(target=None, config_path=None, name_hint=None, trusted=True, repo_root=
                 f[k] = _str_list(f[k], f"{k} of {f['file']}")
         norm.append(f)
     keys = [f['key'] for f in norm]
-    dup = sorted({k for k in keys if keys.count(k) > 1})
+    dup = sorted(k for k, n in Counter(keys).items() if n > 1)
     if dup:
         raise ConfigError(f'duplicate file keys: {dup}')
     names = [f['file'] for f in norm]
-    dupn = sorted({n for n in names if names.count(n) > 1})
+    dupn = sorted(k for k, n in Counter(names).items() if n > 1)
     if dupn:
         raise ConfigError(f'file listed twice in files: {dupn}')
     data['files'] = norm
@@ -627,7 +667,7 @@ def load(target=None, config_path=None, name_hint=None, trusted=True, repo_root=
     if not md.get('description') and toml.get('description'):
         md['description'] = str(toml['description'])
     if not md.get('rights'):
-        r = detect_rights(source, repo_root) if repo_root != source else detect_rights(source)
+        r = detect_rights(*((source, repo_root) if repo_root != source else (source,)), ok=ok)
         if r:
             md['rights'] = r
             inferred.append('metadata.rights')
@@ -635,16 +675,15 @@ def load(target=None, config_path=None, name_hint=None, trusted=True, repo_root=
         md['lang'] = str(toml.get('language') or '') or guess_lang(source, norm)
         inferred.append('metadata.lang')
     if not data['cover'].get('image'):
-        c = find_cover(source)
+        c = find_cover(source, ok)
         if c:
             data['cover']['image'] = c
             data['cover']['_base'] = 'source'
             inferred.append('cover.image')
     if not data.get('slug'):
         data['slug'] = slugify(md['title'])
-    if not data['options'].get('accessibility_summary'):
-        lang = (md.get('lang') or 'en').split('-')[0].lower()
-        data['options']['accessibility_summary'] = DEFAULT_A11Y_SUMMARY.get(lang, DEFAULT_A11Y_SUMMARY['en'])
+    # an empty accessibility_summary gets the default, written at build time to match the images
+    data['options']['_summary_lang'] = (md.get('lang') or 'en').split('-')[0].lower()
     data['options']['_mdbook'] = book_root is not None  # SUMMARY.md alone (GitBook) orders files only
 
     cfg = Config(data, path, base, source, inferred, warnings, user)

@@ -93,7 +93,7 @@ end
 local report = {
   ids = {}, h1 = nil, wide_tables = {}, external = {}, images = {},
   html_removed = {}, html_blocks = 0, h1_fix = "", moved_before_h1 = 0,
-  cited = {}, math = {}, html_links = 0,
+  cited = {}, math = {}, html_links = 0, card_labels = {}, card_headers = {},
 }
 local function note_removed(tag)
   report.html_removed[tag] = (report.html_removed[tag] or 0) + 1
@@ -251,16 +251,41 @@ local function convert_blocks(blocks)
               local t = tag:lower()
               if not (TRANSPARENT[t] or WRAP[t] or VOID[t] or STRUCTURAL[t]) then note_removed(t) end
             end
-            -- <img alt> semantics, as for inline <img>
-            local has_alt = text:match("<[Ii][Mm][Gg][^>]-%s[Aa][Ll][Tt]%s*=") ~= nil
+            local visible = (text:gsub("<!%-%-.-%-%->", ""))
+            -- <img alt> semantics per image, as for inline <img>: no alt = missing, alt="" = decorative
+            local alts = {}
+            for tag in visible:gmatch("<[Ii][Mm][Gg]%f[%s/>][^>]*>") do
+              local t = parse_tag(tag)
+              local a = t and t.attrs.alt
+              if a == nil and tag:lower():match("%salt%f[%s/>]") then a = "" end  -- bare alt attribute
+              table.insert(alts, a == nil and false or a)
+            end
+            local n_img = 0
+            doc:walk{ Image = function() n_img = n_img + 1 end }
+            local k = 0
             doc = doc:walk{ Image = function(im)
-              if not has_alt then
+              k = k + 1
+              local a = alts[k]
+              if n_img ~= #alts then a = (utils.stringify(im.caption) == "") and false or "text" end
+              if a == false then
                 im.attributes["data-mdbindery-alt"] = "missing"
-              elseif utils.stringify(im.caption) == "" then
+              elseif a == "" then
                 im.attributes["data-mdbindery-alt"] = "decorative"
               end
               return im
             end }
+            -- ids the HTML reader drops (for example on a bare <pre>) stay reachable as anchors
+            local present = {}
+            local function seen(e) present[e.identifier] = true end
+            doc:walk{ Header = seen, Div = seen, Span = seen, CodeBlock = seen, Table = seen, Figure = seen,
+                      Image = seen, Link = seen }
+            local anchors = pandoc.Inlines{}
+            for _, pat in ipairs({ '%s[Ii][Dd]%s*=%s*"([^"]+)"', "%s[Ii][Dd]%s*=%s*'([^']+)'" }) do
+              for id in visible:gmatch(pat) do
+                if not present[id] then anchors:insert(pandoc.Span({}, pandoc.Attr(id))); present[id] = true end
+              end
+            end
+            if #anchors > 0 then current():insert(pandoc.Plain(anchors)) end
             current():extend(doc.blocks)
           else
             note_removed("unparsed-block")
@@ -306,6 +331,14 @@ local function same_repo_path(url)
   return nil
 end
 
+-- untrusted repositories: paths that go through a symlink leaving the checkout (listed by Python)
+local function through_link(abs)
+  for _, link in ipairs(ctx.blocked or {}) do
+    if under(abs, link) then return true end
+  end
+  return false
+end
+
 local function resolve_image(img, kind)
   local src = img.src
   local alt_mark = img.attributes["data-mdbindery-alt"]
@@ -347,7 +380,7 @@ local function resolve_image(img, kind)
     end
   end
   if abs then
-    if ctx.image_root and ctx.image_root ~= "" and not under(abs, ctx.image_root)
+    if ctx.image_root and ctx.image_root ~= "" and (not under(abs, ctx.image_root) or through_link(abs))
        and not (ctx.work_dir and under(abs, ctx.work_dir)) then
       entry.status = "outside"
     elseif is_file(abs) then
@@ -440,45 +473,67 @@ local function first_cell_ids(inlines)
   return ids, cleaned
 end
 
+-- every row of the table becomes a card, footer rows and row headers inside bodies included, so no
+-- cell text is lost; the labels a card adds are reported, so the word count can check the rest exactly
 local function table_to_cards(tbl)
-  local headers = {}
-  if tbl.head and tbl.head.rows[1] then
-    for j, cell in ipairs(tbl.head.rows[1].cells) do
+  local headers, header_text = {}, {}
+  local head_rows = (tbl.head and tbl.head.rows) or {}
+  if head_rows[1] then
+    for j, cell in ipairs(head_rows[1].cells) do
       headers[j] = utils.blocks_to_inlines(cell.contents)
+      table.insert(header_text, utils.stringify(cell.contents))
     end
   end
+  table.insert(report.card_headers, table.concat(header_text, " "))
   local title_cols = math.max(1, tonumber(ctx.card_title_columns or 1))
   local cards = pandoc.Blocks{}
-  for _, body in ipairs(tbl.bodies) do
-    for _, row in ipairs(body.body) do
-      local ids, cleaned = first_cell_ids(utils.blocks_to_inlines(row.cells[1].contents))
-      for j = 2, math.min(title_cols, #row.cells) do
-        local more = utils.blocks_to_inlines(row.cells[j].contents)
-        if #more > 0 then cleaned:insert(pandoc.Str(":")); cleaned:insert(pandoc.Space()); cleaned:extend(more) end
-      end
-      -- one field per line: "Label: value"; values with several blocks (lists) keep their structure
-      local blocks = pandoc.Blocks{ pandoc.Para{ pandoc.Strong(cleaned) } }
-      for j = title_cols + 1, #row.cells do
-        local value = row.cells[j].contents
-        if #value > 0 and utils.stringify(value) ~= "" then
-          local label = pandoc.Inlines(headers[j] or pandoc.Inlines{ pandoc.Str("Column " .. j) })
-          local head = pandoc.Strong(label .. pandoc.Inlines{ pandoc.Str(":") })
-          if #value == 1 and (value[1].t == "Plain" or value[1].t == "Para") then
-            blocks:insert(pandoc.Para(pandoc.Inlines{ head, pandoc.Space() } .. value[1].content))
-          else
-            blocks:insert(pandoc.Para{ head })
-            blocks:extend(value)
-          end
+  local function card(row)
+    if #row.cells == 0 then return end
+    local ids, cleaned = first_cell_ids(utils.blocks_to_inlines(row.cells[1].contents))
+    for j = 2, math.min(title_cols, #row.cells) do
+      local more = utils.blocks_to_inlines(row.cells[j].contents)
+      if #more > 0 then cleaned:insert(pandoc.Str(":")); cleaned:insert(pandoc.Space()); cleaned:extend(more) end
+    end
+    -- one field per line: "Label: value"; values with several blocks (lists) keep their structure
+    local blocks = pandoc.Blocks{ pandoc.Para{ pandoc.Strong(cleaned) } }
+    for j = title_cols + 1, #row.cells do
+      local value = row.cells[j].contents
+      if #value > 0 and utils.stringify(value) ~= "" then
+        local label = pandoc.Inlines(headers[j] or pandoc.Inlines{ pandoc.Str("Column " .. j) })
+        table.insert(report.card_labels, utils.stringify(label))
+        local head = pandoc.Strong(label .. pandoc.Inlines{ pandoc.Str(":") })
+        if #value == 1 and (value[1].t == "Plain" or value[1].t == "Para") then
+          blocks:insert(pandoc.Para(pandoc.Inlines{ head, pandoc.Space() } .. value[1].content))
+        else
+          blocks:insert(pandoc.Para{ head })
+          blocks:extend(value)
         end
       end
-      for k = #ids, 2, -1 do  -- extra anchors of the row stay reachable
-        blocks[1].content:insert(1, pandoc.Span({}, pandoc.Attr(ids[k])))
-      end
-      cards:insert(pandoc.Div(blocks, pandoc.Attr(ids[1] or "", { "card" })))
     end
+    for k = #ids, 2, -1 do  -- extra anchors of the row stay reachable
+      blocks[1].content:insert(1, pandoc.Span({}, pandoc.Attr(ids[k])))
+    end
+    cards:insert(pandoc.Div(blocks, pandoc.Attr(ids[1] or "", { "card" })))
   end
+  for _, body in ipairs(tbl.bodies) do
+    for _, row in ipairs(body.head or {}) do card(row) end
+    for _, row in ipairs(body.body) do card(row) end
+  end
+  for _, row in ipairs((tbl.foot and tbl.foot.rows) or {}) do card(row) end
   local out = pandoc.Blocks{}
   if tbl.caption and tbl.caption.long and #tbl.caption.long > 0 then out:extend(tbl.caption.long) end
+  -- header rows after the first (multirow headers) stay as a line above the cards
+  for j = 2, #head_rows do
+    local line = pandoc.Inlines{}
+    for _, cell in ipairs(head_rows[j].cells) do
+      local c = utils.blocks_to_inlines(cell.contents)
+      if #c > 0 then
+        if #line > 0 then line:insert(pandoc.Str(" /")); line:insert(pandoc.Space()) end
+        line:extend(c)
+      end
+    end
+    if #line > 0 then out:insert(pandoc.Para{ pandoc.Strong(line) }) end
+  end
   out:insert(pandoc.Div(cards, pandoc.Attr("", { "cards" })))
   return out
 end
@@ -770,7 +825,7 @@ local function file_phase(doc)
     end,
     Span = function(s) if s.identifier ~= "" then s.identifier = prefix(s.identifier); add(s.identifier); return s end end,
     Div = function(d) if d.identifier ~= "" then d.identifier = prefix(d.identifier); add(d.identifier); return d end end,
-    CodeBlock = function(c) if c.identifier ~= "" then c.identifier = prefix(c.identifier); return c end end,
+    CodeBlock = function(c) if c.identifier ~= "" then c.identifier = prefix(c.identifier); add(c.identifier); return c end end,
     Table = function(t) if t.identifier ~= "" then t.identifier = prefix(t.identifier); return t end end,
     Figure = function(f) if f.identifier ~= "" then f.identifier = prefix(f.identifier); add(f.identifier); return f end end,
     Image = function(im) if im.identifier ~= "" then im.identifier = prefix(im.identifier); return im end end,
@@ -813,6 +868,7 @@ local function links_phase(doc)
     Div = function(d) add(d.identifier) end,
     Table = function(t) add(t.identifier) end,
     Figure = function(f) add(f.identifier) end,
+    CodeBlock = function(c) add(c.identifier) end,
   }
   for _, h in pairs(ctx.h1 or {}) do ids[h] = true end
 

@@ -187,7 +187,20 @@ def _fetch(kind, ref, tmp, log):
     local = (dest / subdir).resolve() if subdir else dest.resolve()
     if not local.is_dir() or not config_mod.contained(local, dest):
         raise FileNotFoundError(f'subfolder not found in repository: {subdir}')
-    return local, tmp, info, dest.resolve()
+    return local, tmp, info, dest.resolve(), remove_escaping_symlinks(dest)
+
+
+def remove_escaping_symlinks(root):
+    """Delete symlinks in a fetched checkout that resolve outside it; return their relative paths."""
+    root = Path(root).resolve()
+    removed = []
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+        for name in dirnames + filenames:
+            p = Path(dirpath) / name
+            if p.is_symlink() and not config_mod.contained(p, root):
+                p.unlink()
+                removed.append(p.relative_to(root).as_posix())
+    return sorted(removed)
 
 
 # ------------------------------------------------------------ static checks
@@ -407,7 +420,11 @@ def check_images(lines, path, rel, rep, src_root, repo_root, github, defs, stric
                 src = re.sub(r'^/([A-Za-z]:)', r'\1', src[7:] if src[5:].startswith('//') else src[5:])
             elif re.match(r'^[a-zA-Z][\w+.-]*:', src) and not re.match(r'^[a-zA-Z]:[\\/]', src):
                 local = repo_file_for_url(src, github)
-                if local and (repo_root / local).is_file():
+                if local and strict_root and not config_mod.contained(repo_root / local, strict_root):
+                    rep.add('error', 'MB406', f'image outside the repository: {src}',
+                            'Keep images inside the repository; a checked repository may not read other files.',
+                            rel, i + 1)
+                elif local and (repo_root / local).is_file():
                     rep.add('info', 'MB401', f'image URL points to this repository; the build uses the local file '
                             f'{local}', f'Link the file directly: {os.path.relpath(repo_root / local, path.parent)}'
                             .replace('\\', '/'), rel, i + 1)
@@ -492,15 +509,16 @@ def check_code(lines, rel, rep):
 
 
 def check_includes(text, path, rel, rep, repo_root):
+    """Expand mdBook directives once: report the ones that fail, return (expanded text, count)."""
     if '{{#' not in text:
-        return 0
+        return text, 0
     lines = text.split('\n')
-    _, n, errors = expand_includes(text, path.parent, repo_root)
+    expanded, n, errors = expand_includes(text, path.parent, repo_root, path)
     for directive, err in errors:
         rep.add('error', 'MB131', f'mdBook directive not expanded ({err}): {directive[:120]}',
                 'Fix the path (relative to this file) or replace the directive with the text it should include.',
                 rel, line_of(lines, directive))
-    return n
+    return expanded, n
 
 
 def suspicious_math(expr):
@@ -519,6 +537,9 @@ def check(target, config_path=None, ref=None, do_build=False, render=True, log=p
     rep = Report(target)
     if gh:
         rep.facts['github'] = gh
+    for link in (fetched[4] if len(fetched) > 4 else []):
+        rep.add('warning', 'MB407', f'symlink pointing outside the repository was removed: {link}',
+                'Commit the file itself; a checked repository may not read files outside its checkout.', link)
     try:
         return _check(local, config_path, rep, gh, do_build, render, log, remote=cleanup is not None,
                       repo_root=repo_root)
@@ -646,9 +667,8 @@ def _check(local, config_path, rep, gh, do_build, render, log, remote=False, rep
             continue
         rel = f['file']
         text = check_encoding(path, rel, rep)
-        totals['includes'] += check_includes(text, path, rel, rep, repo)
-        if '{{#' in text:
-            text = expand_includes(text, path.parent, repo)[0]
+        text, n_inc = check_includes(text, path, rel, rep, repo)
+        totals['includes'] += n_inc
         lines = mask_dropped(text.split('\n'), f.get('drop_sections') or [], cfg.opts.get('drop_lines') or [])
         fm_end = next((j for j in range(1, min(len(lines), 40)) if lines[j].strip() in ('---', '...')), None) \
             if lines and lines[0].strip() == '---' else None
@@ -684,7 +704,8 @@ def _check(local, config_path, rep, gh, do_build, render, log, remote=False, rep
         rep.add('info', 'MB710', f"{totals['math']} math expression(s): rendered as MathML, which some readers "
                 'show poorly', 'Check them in the preview; keep formulas simple where possible.')
 
-    # analysis with pandoc: real link resolution, HTML conversion, charts
+    # analysis with pandoc: real link resolution, HTML conversion, charts; the trial build reuses it
+    a, work = None, None
     if not tools.find('pandoc'):
         rep.add('warning', 'MB001', 'pandoc not installed (or older than 3.8): internal links were not verified',
                 'Run `mdbindery install-tools`, then check again.')
@@ -701,13 +722,15 @@ def _check(local, config_path, rep, gh, do_build, render, log, remote=False, rep
             analysis_findings(rep, a, cfg, src, suggested)
         except BuildError as e:
             rep.add('error', 'MB903', f'analysis failed: {str(e)[:500]}', 'See the message; often malformed Markdown.')
-        finally:
+            a = None
+    try:
+        if do_build and rep.ok:
+            trial_build(rep, cfg, a)
+        elif do_build:
+            rep.facts['trial_build'] = 'skipped: fix the errors first'
+    finally:
+        if work:
             shutil.rmtree(work, ignore_errors=True)
-
-    if do_build and rep.ok:
-        trial_build(rep, cfg)
-    elif do_build:
-        rep.facts['trial_build'] = 'skipped: fix the errors first'
     if not cfg.path:
         if suggested and not cfg.user.get('source_url'):
             cfg.data['source_url'] = suggested
@@ -790,14 +813,14 @@ def analysis_findings(rep, a, cfg, src, suggested):
                 m['file'], line_of(texts.get(m['file'], []), '```mermaid'))
 
 
-def trial_build(rep, cfg):
+def trial_build(rep, cfg, analysis=None):
     from .build import build
     out = Path(tempfile.mkdtemp(prefix='mdbindery-trial-'))
     try:
         if not cfg.meta.get('identifier'):  # a dry run never writes into the user's config
             import uuid
             cfg.meta['identifier'] = f'urn:uuid:{uuid.uuid4()}'
-        s = build(cfg, out_dir=out, log=lambda *_: None)
+        s = build(cfg, out_dir=out, log=lambda *_: None, analysis=analysis)
         g = s['gates']
         ec = g.get('epubcheck', {})
         for m in ec.get('messages', []):

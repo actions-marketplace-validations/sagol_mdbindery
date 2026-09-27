@@ -2,8 +2,15 @@ name: ci
 
 on:
   push:
+    branches: ['**']  # tags are tested by the release workflow, which calls this one
   pull_request:
   workflow_dispatch:
+  workflow_call:  # the release workflow runs this suite on the release tag before publishing
+    inputs:
+      ref:
+        description: git ref to test (empty for the triggering commit)
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -25,6 +32,8 @@ jobs:
       PYTHONUTF8: '1'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: ${{ matrix.python }}
@@ -70,6 +79,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
       - name: Installer (Linux, macOS)
         if: runner.os != 'Windows'
         run: |
@@ -107,6 +118,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
       - uses: ./
         id: mdbindery
         with:

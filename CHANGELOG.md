@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.1 (2026-09-26)
+
+Fixes from an external audit of 0.1.0.
+
+- A repository checked by URL can no longer read files outside its checkout through symlinks. Symlinks that point outside are removed after the fetch (new warning MB407), and chapters, the configuration file, `files:` entries, the cover, license files, and images are all checked after following links. Same-repository image URLs get the same check.
+- Cards keep every table row: header rows after the first, rows in body heads, and footer rows were lost before. Files with cards are no longer exempt from the word count; the gate subtracts the labels cards repeat and compares the rest exactly.
+- Alt text is judged per image in HTML blocks, so one `<img alt>` no longer vouches for its neighbors. The default accessibility summary now says when some images have no text alternative, matching the `alternativeText` feature.
+- `metadata.date` must be a real calendar date (`YYYY`, `YYYY-MM`, or `YYYY-MM-DD`), and numeric options reject `.nan` and `.inf`.
+- mdBook includes report cycles (`include cycle: a.md -> b.md -> a.md`), nesting deeper than 10 levels, more than 5000 includes, or more than 20 MB of included text in one file, instead of stopping silently.
+- A build that stops with an error still writes `reports/build.json` (`failed_stage`, `error`, and whether the EPUB in the folder is stale) and `build.log`. Every `build.json` records `provenance` (tool versions, source commit, options), `timings`, `skipped_gates`, and `warning_gates`.
+- Every external program runs with a time limit and is stopped together with its child processes on timeout or Ctrl+C. `MDBINDERY_TIMEOUT_SCALE` raises all limits.
+- `check --build` reuses its analysis for the trial build, so each file is converted and each chart rendered once.
+- `preview` treats the EPUB as untrusted: scripts are off, pages load only the EPUB's own files, oversized archives are refused, and a sandbox failure is no longer remembered for later runs.
+- `install-tools` updates each tool through a staging folder and keeps the working version until the new one starts; one install runs at a time per tool home.
+- The word-count log states what it checks: `every file within 2% or 25 words of its source`.
+- Releases are published only after the full CI suite passes on the tag and the built wheel installs and builds the sample book on Linux, macOS, and Windows.
+- The content tests run with pandoc alone; only the EPUBCheck integration test needs EPUBCheck.
+- HTML `id` attributes that pandoc's HTML reader drops (for example on `<pre>`) stay reachable as link targets.
+
 ## 0.1.0 (2026-09-26)
 
 First public release.

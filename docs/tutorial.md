@@ -814,7 +814,7 @@ mdbindery: backyard-astronomy (4 files) from /home/jordan/books/backyard-astrono
   built /home/jordan/books/backyard-astronomy/dist/backyard-astronomy.epub (235 KB)
   EPUBCheck: no messages
   Ace: 0 violation(s), 0 blocking
-  word count: no text lost or duplicated
+  word count: every file within 2% or 25 words of its source
 BUILD OK
 ```
 
@@ -825,7 +825,7 @@ Line by line:
 - Each file gets a key in reading order (`k00`, `k01`, ...) and a summary. The README lost its "Contributing" section. `02-the-moon.md` has one reference list entry, one chart, and two images: the Moon photo and the chart, which is now a PNG. `03-planets.md` has two references and its table is rendered as cards. This is also where the build reports what it fixed on its own, such as "title made from the file name" for a chapter without a `#` heading.
 - `EPUBCheck: no messages`: EPUBCheck, the reference validator for EPUB, found no errors and no warnings.
 - `Ace: 0 violation(s), 0 blocking`: the DAISY accessibility check found nothing. Critical and serious violations fail the build; others are listed and do not.
-- `word count: no text lost or duplicated`: the word-count check compares the words in each Markdown file with the words in its part of the EPUB, to catch text lost in conversion (usually broken HTML). A file fails the check when it differs by more than 2% and by more than 25 words. When a file differs by more than 25 words without failing, the line adds "largest difference N% in FILE". When a file fails, the line starts with "word count: FAILED" and names the files with both word counts. Files rendered as cards never fail it, because each card repeats the column names: `03-planets.md` has 321 words in Markdown and 398 in the EPUB.
+- `word count: every file within 2% or 25 words of its source`: the word-count check compares the words in each Markdown file with the words in its part of the EPUB, to catch text lost in conversion (usually broken HTML). A file fails the check when it differs by more than 2% and by more than 25 words. When a file differs by more than 25 words without failing, the line adds "largest difference N% in FILE". When a file fails, the line starts with "word count: FAILED" and names the files with both word counts. Files rendered as cards are checked too. Each card repeats the column names, so `03-planets.md` has 321 words in Markdown and 398 in the EPUB; the check subtracts the repeated names before comparing and records the adjusted count under `compared` in `build.json`. It counts words, so it cannot notice a word swapped for another.
 - `BUILD OK`: every gate passed, and the exit code is 0. When a gate fails, the exit code is 1 and the last line names the failed gates and where the details are, for example `BUILD FAILED: images (details: .../dist/reports/build.json)`. The exit code is 2 when the build could not run at all, for example because of an invalid config.
 
 The first build wrote the identifier into the config, into the empty line that `init` left for it:
@@ -1063,7 +1063,7 @@ mdbindery: backyard-astronomy (4 files) from /home/jordan/books/backyard-astrono
   built /home/jordan/books/backyard-astronomy/dist/backyard-astronomy.epub (263 KB)
   EPUBCheck: no messages
   Ace: 0 violation(s), 0 blocking
-  word count: no text lost or duplicated
+  word count: every file within 2% or 25 words of its source
 BUILD OK
 $ mdbindery preview dist/backyard-astronomy.epub shots2 text/ch001.xhtml text/ch003.xhtml
 shots2/text_ch001.png

@@ -46,7 +46,7 @@ mdbindery doctor
 `doctor` prints the version, the tool home, and one line per tool:
 
 ```
-mdbindery 0.1.0
+mdbindery 0.1.1
 tool home: /home/you/.local/share/mdbindery (default; set MDBINDERY_HOME to use another)
 --- tools
 pandoc     pandoc 3.11
@@ -164,14 +164,14 @@ Output (in `output_dir`, default `dist/`, or the `-o` folder):
 |---|---|
 | `<slug>.epub` | the book |
 | `<slug>-cover.jpg` | full-size cover for store uploads (the supplied cover, or a generated 1600x2560 one) |
-| `reports/build.json` | gates, per-file statistics, link report, pandoc warnings, `ok`, `failed_gates` |
+| `reports/build.json` | gates, per-file statistics, link report, pandoc warnings, `ok`, `failed_gates`, `skipped_gates`, `warning_gates`, `provenance` (tool versions, source commit, options), `timings`; after a build error also `failed_stage`, `error`, and `artifact` |
 | `reports/build.log` | the console log |
 | `reports/epubcheck.json` | EPUBCheck's messages |
 | `reports/ace/report.html`, `reports/ace/report.json` | the Ace accessibility report |
 
 Each build replaces only these files in `reports/`; other files there are kept.
 
-Exit codes: 0 with `BUILD OK`; 1 with `BUILD FAILED: <gates> (details: .../build.json)`; 2 with `config error: ...` or `build error: ...` on stderr (invalid config, missing pandoc, a listed file not found, a file that is not UTF-8, no Markdown files, an unreadable cover); 3 `internal error: ...` (a bug: report it); 130 interrupted.
+Exit codes: 0 with `BUILD OK`; 1 with `BUILD FAILED: <gates> (details: .../build.json)`; 2 with `config error: ...` or `build error: ...` on stderr (invalid config, missing pandoc, a listed file not found, a file that is not UTF-8, no Markdown files, an unreadable cover); 3 `internal error: ...` (a bug: report it); 130 interrupted. After a build error that happened once the build started, `reports/build.json` still says which stage stopped (`failed_stage`) and whether the EPUB in `dist/` is stale (`artifact`); read it before rebuilding. Every external tool has a time limit; `build error: <tool> did not finish within N s` on a huge book or slow machine means rerun with `MDBINDERY_TIMEOUT_SCALE=3`.
 
 The first build writes a permanent `urn:uuid` into the empty `identifier:` line (`generated identifier ... (saved in mdbindery.yaml)`). If the config has no `identifier:` line, or there is no config file, the log says `warning: generated identifier ... for this build only`, and every build gets a new identifier: add `identifier:` under `metadata:`.
 
@@ -187,7 +187,7 @@ Builds are reproducible: the same sources give a byte-identical EPUB. Timestamps
 | `includes` | an mdBook `{{#include}}` directive could not be expanded | log line `INCLUDE in ... not expanded` | fix the path or anchor |
 | `epubcheck` | EPUBCheck reports ERROR or FATAL, cannot run (no Java 11+), or writes no report | log, `reports/epubcheck.json` | read the message id and path |
 | `ace` | Ace reports a critical or serious violation not listed in `options.ace_waivers`, or Ace is installed but writes no report | `reports/ace/report.html` | fix the source (alt text, headings, language) |
-| `wordcount` | a file's word count in the EPUB differs from the source by more than 2% and more than 25 words (card files are exempt) | log line `word count: FAILED: ...` naming the files; `build.json` `gates.wordcount` | broken HTML, text lost or duplicated in conversion; compare with `--keep-work` |
+| `wordcount` | a file's word count in the EPUB differs from the source by more than 2% and more than 25 words (for card files, after subtracting the labels cards repeat) | log line `word count: FAILED: ...` naming the files; `build.json` `gates.wordcount` | broken HTML, text lost or duplicated in conversion; compare with `--keep-work` |
 
 Results other than `pass` and `fail`:
 
@@ -231,7 +231,7 @@ mdbindery preview dist/<slug>.epub "${TMPDIR:-/tmp}/mdb-shots" text/ch003.xhtml 
 | `Ace: FAILED to run: ...` | Ace or its headless Chrome is broken | `mdbindery install-tools --force`; `--no-ace` while iterating |
 | `warning: N chart(s) became placeholders: mermaid-cli is not installed` | no mermaid-cli | `mdbindery install-tools`, then `mdbindery doctor` |
 | `CHART in ... failed to render` | Mermaid syntax error | fix it; `check` shows the parse error as MB701 |
-| `word count: FAILED: text lost or added in conversion` | unclosed HTML, text inside dropped tags, or a converter problem | compare the prepared file in the `--keep-work` folder with the EPUB file (prepare-repo) |
+| `word count: FAILED: text lost or added beyond 2% or 25 words per file` | unclosed HTML, text inside dropped tags, or a converter problem | compare the prepared file in the `--keep-work` folder with the EPUB file (prepare-repo) |
 | `preview error: preview needs Node.js and Puppeteer: ...` | tools installed with `--no-node` | `mdbindery install-tools` |
 | `internal error: ...` (exit 3) | a bug in mdbindery | report it with the printed lines |
 

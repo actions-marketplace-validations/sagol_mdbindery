@@ -2,15 +2,18 @@
 import datetime
 import json
 import os
+import platform
 import re
 import shutil
 import subprocess
 import tempfile
+import time
 import uuid
 import zipfile
 from importlib import resources
 from pathlib import Path
 
+from . import __version__
 from . import config as config_mod
 from . import tools
 from .markdown import md_escape, prepass
@@ -23,13 +26,15 @@ class BuildError(Exception):
     pass
 
 
-def run(cmd, env=None, check=True, cwd=None):
-    """Run a command (never through a shell)."""
+def run(cmd, env=None, check=True, cwd=None, timeout=900, tail=None):
+    """Run a command (never through a shell) within a deadline; its process tree stops on timeout."""
     try:
-        r = subprocess.run([str(c) for c in cmd], env=env or tools.tool_env(), text=True, cwd=cwd,
-                           capture_output=True, encoding='utf-8', errors='replace')
+        r = tools.run_process(cmd, env=env or tools.tool_env(), cwd=cwd, timeout=tools.deadline(timeout), tail=tail)
     except OSError as e:
         raise BuildError(f'cannot run {cmd[0]}: {e}')
+    if r.timed_out and check:
+        raise BuildError(f'{Path(str(cmd[0])).name} did not finish within {tools.deadline(timeout):.0f} s and was '
+                         'stopped (set MDBINDERY_TIMEOUT_SCALE=2 or more for very large books or slow machines)')
     if check and r.returncode != 0:
         raise BuildError(f"command failed ({r.returncode}): {' '.join(map(str, cmd))}\n{r.stderr}{r.stdout}"[-4000:])
     return r
@@ -92,7 +97,7 @@ class Mermaid:
     def _render(self, mmd, png, mcfg):
         return run(self.cmd + ['-q', '-i', mmd, '-o', png, '-b', 'white', '-c', mcfg,
                                '-s', str(float(self.cfg.opts['mermaid_scale'])), '-p', tools.puppeteer_config()],
-                   check=False)
+                   check=False, timeout=180, tail=65536)
 
     def __call__(self, src, alt, source_link='', file=''):
         from .markdown import mermaid_hash
@@ -109,8 +114,10 @@ class Mermaid:
                                             'themeVariables': {'fontSize': f"{self.cfg.opts.get('mermaid_font_size', 18)}px"}}),
                                 encoding='utf-8')
             r = self._render(mmd, png, mcfg)
-            if r.returncode != 0 and tools.sandbox_error(r.stderr + r.stdout):
+            if r.returncode != 0 and tools.sandbox_error(r.stderr + r.stdout) and not tools.no_sandbox():
                 tools.disable_sandbox()  # remembered for later runs
+                self.log('  warning: Chrome\'s sandbox cannot start on this machine; Mermaid now renders without it '
+                         f'(delete {tools.tools_dir() / "no-sandbox"} to try the sandbox again)')
                 r = self._render(mmd, png, mcfg)
             if r.returncode != 0 or not png.exists():
                 out = (r.stderr or '') + (r.stdout or '')
@@ -132,6 +139,18 @@ def read_utf8(path, rel):
         return path.read_bytes().decode('utf-8')
     except UnicodeDecodeError as e:
         raise BuildError(f'{rel} is not valid UTF-8 (byte {e.start}); re-save it as UTF-8')
+
+
+def escaping_links(root):
+    """Symlinks under root that resolve outside it (untrusted repositories may not read through them)."""
+    root = Path(root).resolve()
+    out = []
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+        for name in dirnames + filenames:
+            p = Path(dirpath) / name
+            if p.is_symlink() and not config_mod.contained(p, root):
+                out.append(str(p).replace('\\', '/'))
+    return out
 
 
 def site_links(cfg):
@@ -158,6 +177,7 @@ def analyze(cfg, work, log=print, skip_missing=False):
     card_files = set(cfg.opts['cards'].get('files') or [])
     mermaid = Mermaid(cfg, work, log)
     result = {'files': {}, 'h1': {}, 'mermaid_failures': mermaid.failures}
+    blocked = [] if cfg.trusted else escaping_links(repo_root)
     root_prefix = os.path.relpath(repo_root, src.resolve()).replace('\\', '/')
     root_prefix = '' if root_prefix == '.' else root_prefix
     source_prefix = os.path.relpath(src.resolve(), repo_root).replace('\\', '/')
@@ -166,7 +186,7 @@ def analyze(cfg, work, log=print, skip_missing=False):
     common = {'files': file_map, 'source_url': cfg['source_url'], 'root_prefix': root_prefix,
               'source_prefix': source_prefix, 'github': cfg.github,
               'source_root': posix(src.resolve()), 'repo_root': posix(repo_root), 'work_dir': posix(work.resolve()),
-              'image_root': '' if cfg.trusted else posix(repo_root),
+              'image_root': '' if cfg.trusted else posix(repo_root), 'blocked': blocked,
               'card_min_columns': cfg.opts['cards'].get('min_columns', 9),
               'card_title_columns': cfg.opts['cards'].get('title_columns', 1),
               'wide_table_warn': cfg.opts['wide_table_warn']}
@@ -181,7 +201,7 @@ def analyze(cfg, work, log=print, skip_missing=False):
         raw = read_utf8(path, f['file']) if not skip_missing else path.read_text(encoding='utf-8', errors='replace')
         link = cfg['source_url'] + f['file'].replace(' ', '%20') if cfg['source_url'] else ''
         text, stats = prepass(raw, f, cfg.opts, lambda s, a, _f=f['file']: mermaid(s, a, link, _f),
-                              base_dir=path.parent, root=repo_root)
+                              base_dir=path.parent, root=repo_root, origin=path)
         prepared = work / f'{key}.md'
         prepared.write_text(text, encoding='utf-8')
         rel_dir = posix(Path(f['file']).parent)
@@ -195,7 +215,8 @@ def analyze(cfg, work, log=print, skip_missing=False):
         env.update({'MDBINDERY_CTX': str(work / f'{key}.ctx.json'), 'MDBINDERY_PHASE': 'file'})
         run([pandoc, '-f', 'gfm', '-t', 'json', prepared, '-o', work / f'{key}.json', '--lua-filter', lua], env=env)
         rep = load_report(work / f'{key}.report.json',
-                          ('ids', 'wide_tables', 'external', 'images', 'html_removed', 'cited', 'math'))
+                          ('ids', 'wide_tables', 'external', 'images', 'html_removed', 'cited', 'math',
+                           'card_labels', 'card_headers'))
         cited = set(rep['cited'])
         stats['uncited'] = [c['label'] for c in stats.get('citations', []) if c['label'] not in cited]
         result['h1'][key] = rep['h1']
@@ -219,6 +240,7 @@ def analyze(cfg, work, log=print, skip_missing=False):
         u['file'] = key_file.get(u['key'], u['key'])
     result['links'] = links
     result['linked'] = str(work / 'linked.json')
+    result['work'] = str(work)
     return result
 
 
@@ -344,7 +366,9 @@ def postprocess(src_epub, epub, cfg, has_images, epoch, all_alt=True):
         else:  # pandoc claims alternative text by default; only keep the claim when it is true
             opf = opf.replace('<meta property="schema:accessibilityFeature">alternativeText</meta>', '')
         if 'schema:accessibilitySummary' not in opf:
-            wanted.append(('schema:accessibilitySummary', opts['accessibility_summary']))
+            wanted.append(('schema:accessibilitySummary',
+                           opts['accessibility_summary'] or config_mod.default_summary(
+                               opts.get('_summary_lang', 'en'), has_images, all_alt)))
         if opts.get('conformance_claim'):
             wanted.append(('dcterms:conformsTo', opts['conformance_claim']))
         add = ''.join(f'    <meta property="{p}">{esc(v)}</meta>\n' for p, v in wanted
@@ -353,9 +377,10 @@ def postprocess(src_epub, epub, cfg, has_images, epoch, all_alt=True):
             opf = opf.replace('</metadata>', add + '  </metadata>', 1)
         opf = re.sub(r'\n\s*\n', '\n', opf)
         stamp = (1980, 1, 1, 0, 0, 0)
-        if epoch:  # zip dates start in 1980
+        if epoch:  # zip dates run from 1980 to 2107
             stamp = max(stamp, datetime.datetime.fromtimestamp(epoch, datetime.timezone.utc).timetuple()[:6])
-        tmp = epub.with_name(epub.name + '.part')
+            stamp = min(stamp, (2107, 12, 31, 23, 59, 58))
+        tmp = epub.with_name(f'{epub.name}.{os.getpid()}.part')  # builds sharing a folder do not collide
         with zipfile.ZipFile(tmp, 'w') as zout:
             def zinfo(name, compress):
                 zi = zipfile.ZipInfo(name, date_time=stamp)
@@ -408,7 +433,8 @@ def gate_epubcheck(epub, reports, log, required=True):
     tmp = Path(tempfile.mkdtemp(prefix='mdbindery-epubcheck-'))
     try:
         shutil.copyfile(epub, tmp / 'book.epub')
-        r = run(cmd + ['book.epub', '--json', 'epubcheck.json', '-q'], check=False, cwd=tmp)
+        r = run(cmd + ['book.epub', '--json', 'epubcheck.json', '-q'], check=False, cwd=tmp, timeout=1200,
+                tail=65536)
         if (tmp / 'epubcheck.json').is_file():
             shutil.copyfile(tmp / 'epubcheck.json', rj)
     finally:
@@ -445,7 +471,7 @@ def gate_ace(epub, reports, cfg, log):
     ad = reports / 'ace'
     if ad.exists():
         shutil.rmtree(ad, ignore_errors=True)
-    r = run(ace + ['-f', '-s', '-o', ad, epub], env=tools.ace_env(), check=False)
+    r = run(ace + ['-f', '-s', '-o', ad, epub], env=tools.ace_env(), check=False, timeout=1800, tail=65536)
     rj = ad / 'report.json'
     if not rj.exists():
         detail = ((r.stderr or '') + (r.stdout or '')).strip()
@@ -467,13 +493,12 @@ def gate_ace(epub, reports, cfg, log):
 def source_words(pandoc, prepared):
     """Words in a prepared file as a reader sees them: raw HTML as its text, tags and comments removed."""
     plain = run([pandoc, '-f', 'gfm', '-t', 'plain', '--wrap=none', prepared,
-                 '--lua-filter', DATA / 'plaintext.lua']).stdout
+                 '--lua-filter', DATA / 'plaintext.lua'], timeout=300).stdout
     return words(re.sub(r'<https?://[^>]+>|https?://\S+', ' ', plain))
 
 
 def gate_wordcount(epub, cfg, analysis, log):
     pandoc = tools.find('pandoc')
-    card_files = set(cfg.opts['cards'].get('files') or [])
     with zipfile.ZipFile(epub) as z:
         names = z.namelist()
         opf_name = next(n for n in names if n.endswith('.opf'))
@@ -498,41 +523,80 @@ def gate_wordcount(epub, cfg, analysis, log):
     tol, min_words = float(cfg.opts['wordcount_tolerance']), int(cfg.opts['wordcount_min_words'])
     wc, failing = {}, []
     for name, info in analysis['files'].items():
+        rep = info['report']
         n_src = source_words(pandoc, info['prepared'])
         seg = slices.get(name, '')
         n_out = words(re.sub(r'https?://\S+', ' ', xhtml_text(seg))) if seg else 0
-        diff = (n_out - n_src) / n_src if n_src else (1.0 if n_out else 0.0)
+        # cards repeat each column label on every card and drop the header row; the rest is compared exactly
+        labels = words(' '.join(rep.get('card_labels') or [])) - words(' '.join(rep.get('card_headers') or []))
+        n_cmp = n_out - labels
+        diff = (n_cmp - n_src) / n_src if n_src else (1.0 if n_cmp else 0.0)
         wc[name] = {'source': n_src, 'epub': n_out, 'diff': round(diff, 4)}
-        if name not in card_files and abs(diff) > tol and abs(n_out - n_src) > min_words:
+        if labels:
+            wc[name].update(card_labels=labels, compared=n_cmp)
+        if abs(diff) > tol and abs(n_cmp - n_src) > min_words:
             failing.append(name)
     worst = max((abs(wc[n]['diff']) for n in failing), default=0.0)
+    limit = f'{tol:.0%} or {min_words} words'
     if failing:
         failing.sort(key=lambda n: -abs(wc[n]['diff']))
-        shown = '; '.join(f"{n} {wc[n]['source']} -> {wc[n]['epub']} words ({wc[n]['diff']:+.1%})"
-                          for n in failing[:5])
+        shown = '; '.join(f"{n} {wc[n]['source']} -> {wc[n].get('compared', wc[n]['epub'])} words "
+                          f"({wc[n]['diff']:+.1%})" for n in failing[:5])
         more = f' and {len(failing) - 5} more' if len(failing) > 5 else ''
-        log(f'  word count: FAILED: text lost or added in conversion (limit {tol:.0%} and {min_words} words): '
-            f'{shown}{more}')
+        log(f'  word count: FAILED: text lost or added beyond {limit} per file: {shown}{more}')
     else:
         big = max(((abs(v['diff']), k) for k, v in wc.items()
-                   if k not in card_files and abs(v['epub'] - v['source']) > min_words), default=None)
+                   if abs(v.get('compared', v['epub']) - v['source']) > min_words), default=None)
         note = f'; largest difference {big[0]:.1%} in {big[1]}' if big else ''
-        log(f'  word count: no text lost or duplicated{note}')
+        log(f'  word count: every file within {limit} of its source{note}')
     return {'result': 'fail' if failing else 'pass', 'worst': round(worst, 4), 'failing': failing, 'files': wc}
 
 
-def clear_reports(reports):
-    """Remove what an earlier build wrote (and nothing else)."""
-    for n in REPORT_FILES:
-        p = reports / n
-        if p.is_file():
-            p.unlink()
+def clear_gate_reports(reports):
+    """Remove the validators' reports of an earlier build (build.json and build.log are replaced at the end,
+    also when the build fails, so a failed build never leaves the folder without its own diagnostics)."""
+    p = reports / 'epubcheck.json'
+    if p.is_file():
+        p.unlink()
     if (reports / 'ace').is_dir():
         shutil.rmtree(reports / 'ace', ignore_errors=True)
 
 
-def build(cfg, out_dir=None, run_ace=True, keep_work=False, log=print):
-    """Build the EPUB. Returns a summary dict; summary['ok'] is True when every gate passed."""
+def write_summary(reports, summary):
+    tmp = reports / f'build.json.{os.getpid()}.part'
+    tmp.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding='utf-8')
+    tmp.replace(reports / 'build.json')
+
+
+def provenance(cfg):
+    """Versions and source revision, so reports from different machines and runs can be compared."""
+    out = {'mdbindery': __version__, 'python': platform.python_version()}
+    p = tools.find('pandoc')
+    v = tools.pandoc_version(p) if p else None
+    out['pandoc'] = f'{v[0]}.{v[1]}' if v else None
+    jar = tools.epubcheck_jar()
+    out['epubcheck'] = jar.parent.name if jar else None
+    ace = tools.npm_modules_dir() / '@daisy' / 'ace' / 'package.json'
+    try:
+        out['ace'] = json.loads(ace.read_text(encoding='utf-8')).get('version') if ace.is_file() else None
+    except (OSError, ValueError):
+        out['ace'] = None
+    try:
+        r = subprocess.run(['git', '-C', str(cfg.source), 'rev-parse', 'HEAD'], capture_output=True, text=True,
+                           timeout=20)
+        out['source_revision'] = r.stdout.strip() if r.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError):
+        out['source_revision'] = None
+    out['options'] = {k: v for k, v in cfg.opts.items() if not k.startswith('_')}
+    return out
+
+
+def build(cfg, out_dir=None, run_ace=True, keep_work=False, log=print, analysis=None):
+    """Build the EPUB. Returns a summary dict; summary['ok'] is True when every gate passed.
+
+    analysis: a result of analyze() to reuse (check --build); its work folder belongs to the caller.
+    The EPUB in the output folder is always the latest one built; build.json says whether it passed.
+    """
     opts = cfg.opts
     if not cfg['files']:
         raise BuildError('no Markdown files in the reading order (MB100): add chapters or list them under files:')
@@ -549,16 +613,25 @@ def build(cfg, out_dir=None, run_ace=True, keep_work=False, log=print):
         raise BuildError(f'slug must be a plain file name: {slug!r}')
     reports = out_dir / 'reports'
     reports.mkdir(parents=True, exist_ok=True)
-    clear_reports(reports)  # stale reports from an earlier build would mislead
-    work = Path(tempfile.mkdtemp(prefix='mdbindery-')).resolve()
+    clear_gate_reports(reports)  # stale validator reports from an earlier build would mislead
+    own_work = analysis is None
+    work = Path(tempfile.mkdtemp(prefix='mdbindery-')).resolve() if own_work else Path(analysis['work'])
     n = len(cfg['files'])
     log(f"mdbindery: {slug} ({n} file{'s' if n != 1 else ''}) from {cfg.source}")
     for w in cfg.warnings:
         log(f'  config warning: {w}')
-    summary = {'gates': {}, 'files': {}}
+    summary = {'gates': {}, 'files': {}, 'provenance': provenance(cfg), 'timings': {}}
+    stage, t0 = 'analysis', time.monotonic()
+
+    def done(name):
+        nonlocal t0
+        summary['timings'][name] = round(time.monotonic() - t0, 2)
+        t0 = time.monotonic()
     try:
         epoch = source_epoch(cfg)
-        a = analyze(cfg, work, log)
+        a = analysis or analyze(cfg, work, log)
+        done('analysis')
+        stage = 'identifier'
         ident = ensure_identifier(cfg, log)
         date = cfg.meta.get('date') or 'git'
         if date == 'git':
@@ -653,8 +726,10 @@ def build(cfg, out_dir=None, run_ace=True, keep_work=False, log=print):
         if include_problems:
             summary['gates']['includes'] = {'result': 'fail', 'problems': include_problems}
 
+        stage = 'cover'
         store_cover, embed_cover = make_covers(cfg, out_dir, work, slug)
         css = write_css(cfg, work)
+        stage = 'epub'
         linked = json.loads(Path(a['linked']).read_text(encoding='utf-8'))
         linked['meta'] = book_metadata(cfg, ident, date)  # literal strings: titles are not Markdown
         book_json = work / 'book.json'
@@ -674,34 +749,51 @@ def build(cfg, out_dir=None, run_ace=True, keep_work=False, log=print):
         env = tools.tool_env()
         if epoch:
             env['SOURCE_DATE_EPOCH'] = str(max(epoch, 315532800))  # zip dates start in 1980
-        r = run(cmd, env=env)
+        r = run(cmd, env=env, timeout=1800)
         warnings = [line.strip() for line in (r.stderr or '').splitlines() if line.strip()]
         for line in warnings:
             log(f'  pandoc: {line}')
         summary['pandoc_warnings'] = warnings
         postprocess(raw_epub, epub, cfg, has_images, epoch, all_alt)
+        summary['epub'] = str(epub)
+        summary['cover'] = str(store_cover)
         log(f'  built {epub} ({epub.stat().st_size // 1024} KB)')
+        done('epub')
 
+        stage = 'epubcheck'
         if opts.get('epubcheck', True):
             summary['gates']['epubcheck'] = gate_epubcheck(epub, reports, log)
         else:
             log('  EPUBCheck: skipped (options.epubcheck: false)')
             summary['gates']['epubcheck'] = {'result': 'skipped'}
+        done('epubcheck')
+        stage = 'ace'
         if run_ace and opts['ace']:
             summary['gates']['ace'] = gate_ace(epub, reports, cfg, log)
         else:
             summary['gates']['ace'] = {'result': 'skipped'}
+        done('ace')
+        stage = 'wordcount'
         summary['gates']['wordcount'] = gate_wordcount(epub, cfg, a, log)
-        summary['epub'] = str(epub)
-        summary['cover'] = str(store_cover)
+        done('wordcount')
+    except Exception as e:
+        # a stopped build still leaves its own diagnostics: the failed stage, the error, the artifact state
+        summary.update(ok=False, failed_gates=[], failed_stage=stage, error=str(e)[-4000:])
+        if not summary.get('epub'):
+            summary['artifact'] = ('an EPUB from an earlier build is in the output folder; it is not this build'
+                                   if epub.exists() else 'none')
+        write_summary(reports, summary)
+        raise
     finally:
-        if keep_work:
+        if keep_work and own_work:
             log(f'  work folder kept: {work}')
-        else:
+        elif own_work:
             shutil.rmtree(work, ignore_errors=True)
     failed = [k for k, v in summary['gates'].items() if v.get('result') == 'fail']
     summary['ok'] = not failed
     summary['failed_gates'] = failed
-    (reports / 'build.json').write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding='utf-8')
+    summary['skipped_gates'] = [k for k, v in summary['gates'].items() if v.get('result') == 'skipped']
+    summary['warning_gates'] = [k for k, v in summary['gates'].items() if v.get('result') == 'warn']
+    write_summary(reports, summary)
     log('BUILD OK' if not failed else f"BUILD FAILED: {', '.join(failed)} (details: {reports / 'build.json'})")
     return summary

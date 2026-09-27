@@ -5,7 +5,7 @@ import zipfile
 
 import pytest
 
-from conftest import needs_epubcheck, needs_pandoc
+from conftest import needs_pandoc, validate_if_installed
 from mdbindery import cli, config, tools
 from mdbindery.build import BuildError, analyze, build
 from mdbindery.check import check
@@ -37,7 +37,6 @@ def _quiet(*_):
 
 
 @needs_pandoc
-@needs_epubcheck
 def test_content_survives_conversion(tmp_path):
     book = _book(tmp_path / 'b', {
         '01-a.md': ('# A\n\nCited [1]. Code `a[1]` and:\n\n```python\ndef f():\n    return arr[1]\n\n\n'
@@ -51,7 +50,7 @@ def test_content_survives_conversion(tmp_path):
     from PIL import Image
     (book / 'images').mkdir()
     Image.new('RGB', (10, 10), 'white').save(book / 'images' / 'p.png')
-    s = build(config.load(book), out_dir=tmp_path / 'out', run_ace=False, log=_quiet)
+    s = build(validate_if_installed(config.load(book)), out_dir=tmp_path / 'out', run_ace=False, log=_quiet)
     assert s['ok'], (s['failed_gates'], s['gates'])
     x = _xhtml(s['epub'])
     plain = html.unescape(re.sub(r'<[^>]+>', '', x))
@@ -107,13 +106,12 @@ def test_untrusted_book_cannot_embed_outside_images(tmp_path):
 
 
 @needs_pandoc
-@needs_epubcheck
 def test_metadata_is_literal_text(tmp_path):
     book = _book(tmp_path / 'b', {'01-a.md': '# A\n\nText.\n'}, None)
     (book / 'mdbindery.yaml').write_text(
         f'metadata:\n  title: "Using <div> tags *and* C_sharp_ [draft]"\n  identifier: {ID}\n'
         '  description: "Covers *nix tools & <b>markup</b>, mail me@example.org"\noptions:\n  ace: false\n')
-    s = build(config.load(book), out_dir=tmp_path / 'out', run_ace=False, log=_quiet)
+    s = build(validate_if_installed(config.load(book)), out_dir=tmp_path / 'out', run_ace=False, log=_quiet)
     with zipfile.ZipFile(s['epub']) as z:
         opf = next(z.read(n).decode() for n in z.namelist() if n.endswith('.opf'))
     assert 'Using &lt;div&gt; tags *and* C_sharp_ [draft]' in opf
@@ -315,3 +313,214 @@ def test_mdbook_outside_git_figures_and_website_links(tmp_path):
     assert 'https://docs.example.org/guide/start.html' in (tmp_path / 'w' / 'linked.json').read_text()
     gitbook = _book(tmp_path / 'gb', {'SUMMARY.md': '- [A](a.md)\n', 'a.md': '# A\n'}, None)
     assert not config.load(gitbook).mdbook
+
+
+# ------------------------------------------------------------ second audit (2026-09)
+
+def _symlink(link, target):
+    try:
+        link.symlink_to(target)
+    except (OSError, NotImplementedError):
+        pytest.skip('symlinks are not available here')
+
+
+@needs_pandoc
+def test_checked_repository_never_reads_through_symlinks(tmp_path):
+    from PIL import Image
+    (tmp_path / 'outside.md').write_text('# SENTINEL\n\nOutside text.\n')
+    Image.new('RGB', (2, 2)).save(tmp_path / 'outside.png')
+    repo = _book(tmp_path / 'repo', {'01-a.md': '# A\n\n![i](image.png)\n'}, None)
+    _symlink(repo / '02-b.md', tmp_path / 'outside.md')
+    _symlink(repo / 'image.png', tmp_path / 'outside.png')
+    _symlink(repo / 'cover.png', tmp_path / 'outside.png')
+    cfg = config.load(repo, trusted=False, repo_root=repo)
+    assert [f['file'] for f in cfg['files']] == ['01-a.md'] and not cfg['cover']['image']
+    (tmp_path / 'w').mkdir()
+    a = analyze(cfg, tmp_path / 'w', log=_quiet)
+    assert [i['status'] for i in a['files']['01-a.md']['report']['images']] == ['outside']
+    assert len(config.load(repo)['files']) == 2  # a local book the user owns may use links
+    (repo / 'mdbindery.yaml').write_text('files: [01-a.md, 02-b.md]\n')
+    with pytest.raises(config.ConfigError, match='files entry 02-b.md points outside'):
+        config.load(repo, trusted=False, repo_root=repo)
+    (repo / 'mdbindery.yaml').unlink()
+    (tmp_path / 'outside.yaml').write_text('metadata:\n  title: Outside\n')
+    _symlink(repo / 'mdbindery.yaml', tmp_path / 'outside.yaml')
+    with pytest.raises(config.ConfigError, match='points outside the repository'):
+        config.load(repo, trusted=False, repo_root=repo)
+
+
+def test_fetched_checkout_loses_escaping_symlinks(tmp_path):
+    from mdbindery.check import Report, check_images, remove_escaping_symlinks
+    (tmp_path / 'secret.png').write_bytes(b'x')
+    repo = _book(tmp_path / 'repo', {'images/p.png': b'png', 'docs/a.md': '# A\n'}, None)
+    _symlink(repo / 'images' / 'out.png', tmp_path / 'secret.png')
+    _symlink(repo / 'docs' / 'in.png', repo / 'images' / 'p.png')
+    assert remove_escaping_symlinks(repo) == ['images/out.png']
+    assert (repo / 'docs' / 'in.png').is_symlink() and not (repo / 'images' / 'out.png').exists()
+    # an image URL of the same repository is held to the same boundary as a relative path
+    rep = Report(str(repo))
+    line = '![x](https://github.com/o/r/raw/main/../secret.png)'
+    check_images([line], repo / 'docs' / 'a.md', 'docs/a.md', rep, repo, repo, 'o/r', {}, strict_root=repo)
+    assert [(f['code'], f['severity']) for f in rep.findings] == [('MB406', 'error')]
+
+
+@needs_pandoc
+def test_cards_keep_every_row_and_the_word_count_stays_exact(tmp_path, monkeypatch):
+    table = ('<table>\n<thead><tr><th>Name</th><th>Value</th></tr><tr><th>sub a</th><th>sub b</th></tr></thead>\n'
+             '<tbody><tr><td>Item</td><td>BODY</td></tr></tbody>\n'
+             '<tfoot><tr><td>Total</td><td>' + 'FOOTER ' * 60 + '</td></tr></tfoot>\n</table>\n')
+    book = _book(tmp_path / 'b', {'01-a.md': '# A\n\nIntro prose.\n\n' + table},
+                 'options:\n  ace: false\n  epubcheck: false\n  cards:\n    files: [01-a.md]\n    min_columns: 2\n')
+    s = build(config.load(book), out_dir=tmp_path / 'out', run_ace=False, log=_quiet)
+    x = _xhtml(s['epub'])
+    assert x.count('FOOTER') == 60 and 'sub a' in x and 'BODY' in x and 'class="card"' in x
+    wc = s['gates']['wordcount']
+    f = wc['files']['01-a.md']
+    assert wc['result'] == 'pass' and f.get('compared', f['epub']) == f['source'], f
+    # a chapter with cards is not exempt: prose lost from it fails the gate
+    import mdbindery.build as build_mod
+    real = build_mod.xhtml_text
+    monkeypatch.setattr(build_mod, 'xhtml_text', lambda t: real(t).replace('FOOTER', ''))
+    s = build(config.load(book), out_dir=tmp_path / 'out2', run_ace=False, log=_quiet)
+    assert s['gates']['wordcount']['failing'] == ['01-a.md']
+
+
+@needs_pandoc
+def test_each_html_image_keeps_its_own_alt_text(tmp_path):
+    from PIL import Image
+    book = _book(tmp_path / 'b', {'01-a.md': ('# A\n\n<div>\n<img src="p.png" alt="A chart">\n'
+                                              '<!-- <img src="p.png" alt="old"> -->\n<img src="p.png">\n</div>\n')},
+                 'options:\n  ace: false\n  epubcheck: false\n')
+    Image.new('RGB', (2, 2)).save(book / 'p.png')
+    s = build(config.load(book), out_dir=tmp_path / 'out', run_ace=False, log=_quiet)
+    assert [bool(i.get('alt')) for i in s['files']['01-a.md']['images']] == [True, False]
+    with zipfile.ZipFile(s['epub']) as z:
+        opf = next(z.read(n).decode() for n in z.namelist() if n.endswith('.opf'))
+    assert '>alternativeText<' not in opf and 'some images have no text alternative' in opf
+
+
+def test_config_rejects_non_finite_numbers_and_impossible_dates(tmp_path):
+    for opt in ('wordcount_tolerance: .nan', 'toc_depth: .inf', 'mermaid_scale: -.inf'):
+        book = _book(tmp_path / opt.split(':')[0], {'01-a.md': '# A\n'}, f'options:\n  {opt}\n')
+        with pytest.raises(config.ConfigError, match='finite number'):
+            config.load(book)
+    for date, ok in (('2026-99-99', False), ('2026-02-30', False), ('26-09', False),
+                     ('2026', True), ('2026-09', True), ('2026-09-26', True)):
+        assert config.valid_date(date) is ok, date
+
+
+def test_include_cycles_and_depth_are_reported(tmp_path):
+    from mdbindery.markdown import INCLUDE_MAX_DEPTH, expand_includes
+    (tmp_path / 'a.md').write_text('A {{#include b.md}}\n')
+    (tmp_path / 'b.md').write_text('B {{#include a.md}}\n')
+    text, n, errors = expand_includes('{{#include a.md}}', tmp_path, tmp_path, origin=tmp_path / 'ch.md')
+    assert n == 2 and '{{#include a.md}}' in text
+    assert [e for _, e in errors] == ['include cycle: ch.md -> a.md -> b.md -> a.md']
+    for i in range(INCLUDE_MAX_DEPTH + 1):
+        (tmp_path / f'd{i}.md').write_text(f'level{i} {{{{#include d{i + 1}.md}}}}' if i < INCLUDE_MAX_DEPTH else 'end')
+    text, n, errors = expand_includes('{{#include d0.md}}', tmp_path, tmp_path, origin=tmp_path / 'ch.md')
+    assert n == INCLUDE_MAX_DEPTH and 'end' not in text
+    assert [e for _, e in errors] == [f'includes nested deeper than {INCLUDE_MAX_DEPTH} levels']
+
+
+@needs_pandoc
+def test_failed_build_leaves_its_own_diagnostics(tmp_path, monkeypatch, capsys):
+    import mdbindery.build as build_mod
+    book = _book(tmp_path / 'b', {'01-a.md': '# A\n\nText.\n'}, 'options:\n  ace: false\n  epubcheck: false\n')
+    out = tmp_path / 'out'
+    (out / 'reports').mkdir(parents=True)
+    (out / 'reports' / 'build.json').write_text('previous report')
+    (out / 't.epub').write_bytes(b'previous epub')
+
+    def broken(*_a, **_k):
+        raise BuildError('synthetic failure')
+    monkeypatch.setattr(build_mod, 'gate_wordcount', broken)
+    assert cli.main(['build', str(book), '--out', str(out), '--no-ace', '-q']) == 2
+    import json
+    s = json.loads((out / 'reports' / 'build.json').read_text())
+    assert s['ok'] is False and s['failed_stage'] == 'wordcount' and 'synthetic failure' in s['error']
+    assert s['provenance']['pandoc'] and 'epub' in s['timings']
+    assert 'build error: synthetic failure' in (out / 'reports' / 'build.log').read_text()
+    assert (out / 't.epub').read_bytes() != b'previous epub'  # this build's EPUB, not the earlier one
+    monkeypatch.setattr(build_mod, 'analyze', broken)
+    (out / 't.epub').write_bytes(b'previous epub')
+    with pytest.raises(BuildError):
+        build(config.load(book), out_dir=out, run_ace=False, log=_quiet)
+    s = json.loads((out / 'reports' / 'build.json').read_text())
+    assert s['failed_stage'] == 'analysis' and s['artifact'].startswith('an EPUB from an earlier build')
+
+
+@needs_pandoc
+def test_check_build_converts_each_file_once(tmp_path, monkeypatch):
+    book = _book(tmp_path / 'b', {f'{i:02}.md': f'# Chapter {i}\n\nSome prose here.\n' for i in range(5)},
+                 'metadata:\n  authors: [X]\n  rights: MIT\noptions:\n  ace: false\n  epubcheck: false\n')
+    real, calls = tools.run_process, []
+
+    def counted(cmd, *a, **k):
+        if 'pandoc' in str(cmd[0]).lower():
+            calls.append(cmd)
+        return real(cmd, *a, **k)
+    monkeypatch.setattr(tools, 'run_process', counted)
+    assert build(config.load(book), out_dir=tmp_path / 'o1', run_ace=False, log=_quiet)['ok']
+    alone = len(calls)
+    calls.clear()
+    assert check(str(book), do_build=True, render=False, log=_quiet).ok
+    assert len(calls) == alone, (alone, len(calls))
+
+
+def test_run_process_stops_the_whole_tree_on_timeout(tmp_path):
+    import os
+    import sys
+    import time
+    pid_file = tmp_path / 'child.pid'
+    code = ('import subprocess, sys, time; '
+            'p = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"]); '
+            f'open({str(pid_file)!r}, "w").write(str(p.pid)); print("x" * 10000); time.sleep(60)')
+    start = time.monotonic()
+    r = tools.run_process([sys.executable, '-c', code], timeout=tools.deadline(3), tail=100)
+    assert r.returncode == -9 and r.timed_out and 'stopped after' in r.stderr
+    assert time.monotonic() - start < 30 and len(r.stdout) <= 100
+    if os.name == 'posix':
+        child = int(pid_file.read_text())
+        for _ in range(50):
+            try:
+                os.kill(child, 0)
+            except ProcessLookupError:
+                break
+            time.sleep(0.1)
+        else:
+            pytest.fail('grandchild process still running')
+
+
+def test_failed_tool_update_keeps_the_working_version(tmp_path):
+    from mdbindery import installer
+    target = tmp_path / 'tools' / 'pandoc'
+    (target / 'bin').mkdir(parents=True)
+    (target / 'bin' / 'pandoc').write_text('old')
+    (target / '.mdbindery-version').write_text('1.0')
+    new = tmp_path / 'dl' / 'pandoc-2.0' / 'bin'
+    new.mkdir(parents=True)
+    (new / 'pandoc').write_text('new')
+
+    def bad(folder):
+        raise RuntimeError('does not run')
+    with pytest.raises(RuntimeError, match='does not run'):
+        installer._place(new / 'pandoc', target, '2.0', check=bad)
+    assert (target / 'bin' / 'pandoc').read_text() == 'old' and installer._installed(target, '1.0')
+    assert sorted(p.name for p in target.parent.iterdir()) == ['pandoc']
+    new.mkdir(parents=True, exist_ok=True)
+    (new / 'pandoc').write_text('new')
+    installer._place(new / 'pandoc', target, '2.0', check=lambda folder: None)
+    assert (target / 'bin' / 'pandoc').read_text() == 'new' and installer._installed(target, '2.0')
+    assert sorted(p.name for p in target.parent.iterdir()) == ['pandoc']
+
+
+def test_one_tool_install_at_a_time(tmp_path, monkeypatch):
+    from mdbindery import installer
+    monkeypatch.setenv('MDBINDERY_HOME', str(tmp_path))
+    tools.tools_dir().mkdir(parents=True)
+    lock = installer._lock()
+    with pytest.raises(RuntimeError, match='another `mdbindery install-tools` is running'):
+        installer._lock()
+    lock.unlink()
+    installer._lock().unlink()

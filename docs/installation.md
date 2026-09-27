@@ -65,8 +65,8 @@ When the installer finishes, open a new terminal and run `mdbindery doctor` (see
 The commands above install the latest code on `main`. To install a release, take the installer from its tag and pass the same tag as `--ref` (`-Ref` on Windows):
 
 ```
-curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/v0.1.0/install/install.sh | bash -s -- --ref v0.1.0
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/sagol/mdbindery/v0.1.0/install/install.ps1))) -Ref v0.1.0
+curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/v0.1.1/install/install.sh | bash -s -- --ref v0.1.1
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/sagol/mdbindery/v0.1.1/install/install.ps1))) -Ref v0.1.1
 ```
 
 The installers never ask questions and exit with a non-zero status when a step fails, so they can run unattended in provisioning scripts and CI.
@@ -81,7 +81,7 @@ Every channel installs the same `mdbindery` command. The external tools always c
 | PyPI with uv | `uv tool install mdbindery` | `uv tool upgrade mdbindery` |
 | PyPI with pip | `python -m pip install mdbindery` (in a virtual environment) | `python -m pip install -U mdbindery` |
 | Homebrew (macOS, Linux) | `brew install sagol/tap/mdbindery` | `brew upgrade mdbindery` |
-| A release's files | the wheel or source archive from the [releases page](https://github.com/sagol/mdbindery/releases): `pipx install ./mdbindery-0.1.0-py3-none-any.whl` | install the newer file |
+| A release's files | the wheel or source archive from the [releases page](https://github.com/sagol/mdbindery/releases): `pipx install ./mdbindery-0.1.1-py3-none-any.whl` | install the newer file |
 
 After any of these, run:
 
@@ -90,7 +90,7 @@ mdbindery install-tools
 mdbindery doctor
 ```
 
-To pin a version: `pipx install mdbindery==0.1.0`, `uv tool install mdbindery==0.1.0`.
+To pin a version: `pipx install mdbindery==0.1.1`, `uv tool install mdbindery==0.1.1`.
 
 ### GitHub Actions
 
@@ -102,7 +102,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: sagol/mdbindery@v0.1.0
+      - uses: sagol/mdbindery@v0.1.1
       - run: mdbindery check . --build
       - run: mdbindery build
       - uses: actions/upload-artifact@v4
@@ -176,7 +176,7 @@ The command installs into `<tool home>/tools/`, in this order. Each component fo
    - `never`: do nothing. EPUBCheck then needs a Java 11+ on `PATH` (or a runtime installed earlier in `tools/jre/`).
 4. Unless `--no-node`, the optional Node.js tools:
    - Node.js 24.21.0 from nodejs.org into `tools/node/`, SHA-256 checked.
-   - `npm install -g --prefix tools/npm @mermaid-js/mermaid-cli@12.0.0 @daisy/ace@1.4.6`, with Puppeteer's and Electron's own browser downloads turned off. npm's cache is pointed at `tools/npm-cache/` during the install and deleted afterwards, so nothing is left in `~/.npm`. The two packages are pinned by version; their dependencies are resolved by npm at install time.
+   - `npm install -g --prefix tools/.staging-npm @mermaid-js/mermaid-cli@12.0.0 @daisy/ace@1.4.6`, swapped into `tools/npm` when both packages are there, with Puppeteer's and Electron's own browser downloads turned off. npm's cache is pointed at `tools/npm-cache/` during the install and deleted afterwards, so nothing is left in `~/.npm`. The two packages are pinned by version; their dependencies are resolved by npm at install time.
    - For every copy of Puppeteer inside those packages, `puppeteer browsers install chrome-headless-shell` into `tools/puppeteer/`. mermaid-cli and Ace bring different Puppeteer versions, so two headless Chrome builds are installed. This step runs on every `install-tools` call, so it also restores a deleted browser.
 
    These steps are best effort. If one fails, the command prints `warning: Node.js tools not installed: <reason>` and `charts become placeholders, Ace and preview are unavailable; run install-tools again later`, the tool table gets a `node: install failed: ...` note, and the command still succeeds when pandoc and EPUBCheck work.
@@ -184,6 +184,8 @@ The command installs into `<tool home>/tools/`, in this order. Each component fo
 6. The same self-test as `mdbindery doctor` runs and prints the tool table.
 
 Every archive is unpacked safely: an entry whose path or link target would land outside the target folder, or a special file such as a device, stops the install with `install failed: unsafe path in archive: ...` (or `unsafe link`, `unsupported member`).
+
+Updates are transactional. Each component is unpacked into a staging folder next to its final place (`tools/.staging-pandoc`), started once to prove it runs (`pandoc --version`, `java -version`, `node --version`; for EPUBCheck, its jar must be there; for the npm packages, both must be installed), and only then swapped in. The previous version waits as `tools/.old-<name>` until the new one passes, so a failed download, extraction, or check leaves the working version in place with its marker, and the next `install-tools` starts clean. One `install-tools` runs at a time per tool home: a second one stops with `another \`mdbindery install-tools\` is running (lock file .../tools/.install.lock)`. A lock file older than three hours counts as abandoned; delete it yourself if an install was killed.
 
 Exit status: 0 when pandoc and EPUBCheck work afterwards; 1 when either is missing (`required tools are missing: ...`, for example with `--java never` and no Java); 2 when a required step failed (the message starts with `install failed:`, for example a download error or a checksum mismatch).
 
@@ -219,6 +221,7 @@ You can run `mdbindery install-tools` again at any time with different options, 
 | `MDBINDERY_HOME` | the installers and every `mdbindery` command | Tool home. mdbindery looks for its tools here on every run, so if you install with a custom value, set it permanently (in your shell profile, or as a Windows user environment variable). The installers print the line to use |
 | `MDBINDERY_BIN` | the installers | Folder for the `mdbindery` command. Default `~/.local/bin`; Windows `%USERPROFILE%\.local\bin` |
 | `MDBINDERY_NO_SANDBOX` | `mdbindery` | Any non-empty value starts Chrome without its sandbox (mermaid-cli and `preview`) |
+| `MDBINDERY_TIMEOUT_SCALE` | `mdbindery` | Multiplies every time limit for external programs (see [building.md](building.md#the-pipeline)); `3` triples them for a slow machine or a very large book |
 | `CI` | `mdbindery` | Any non-empty value, as set by CI services, has the same effect as `MDBINDERY_NO_SANDBOX` |
 | `XDG_DATA_HOME` | `mdbindery` and `install.sh` on Linux | Base folder of the default tool home |
 | `LOCALAPPDATA` | `mdbindery` and `install.ps1` on Windows | Base folder of the default tool home |
@@ -317,7 +320,9 @@ Chrome's sandbox stays on for mermaid-cli and `preview` wherever it works. mdbin
 
 - mdbindery runs as root (in most containers);
 - `CI` or `MDBINDERY_NO_SANDBOX` is set;
-- Chrome failed with a message about its sandbox, for example on a system that restricts unprivileged user namespaces. mdbindery then retries without the sandbox and writes `<tool home>/tools/no-sandbox`, so later runs start without it.
+- Chrome failed with a message about its sandbox, for example on a system that restricts unprivileged user namespaces. mdbindery then retries without the sandbox, logs `warning: Chrome's sandbox cannot start on this machine; Mermaid now renders without it`, and writes `<tool home>/tools/no-sandbox`, so later runs start without it.
+
+`preview` follows the marker and the variables above, but its own sandbox failure is not remembered: it warns and takes that run's screenshots without the sandbox. It also keeps scripts off and loads only the EPUB's own files (see [building.md](building.md#previewing-pages)).
 
 `mdbindery doctor` shows `mermaid    renders PNG (Chrome sandbox off)` when the sandbox is off. To try the sandbox again after changing the system, delete `tools/no-sandbox`. Ace always starts its Chrome without the sandbox (a setting inside Ace); it only opens the EPUB that was just built. Other launch problems are covered in [troubleshooting](troubleshooting.md#puppeteer-and-chrome-launch-failures).
 
@@ -381,7 +386,7 @@ Building needs no network access: a remote image (`https://...`) is never downlo
 `mdbindery doctor` prints the version, the tool home, and one line per tool. A full install in the default tool home (path shortened):
 
 ```
-mdbindery 0.1.0
+mdbindery 0.1.1
 tool home: .../.local/share/mdbindery (default; set MDBINDERY_HOME to use another)
 --- tools
 pandoc     pandoc 3.11

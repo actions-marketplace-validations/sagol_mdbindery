@@ -1,19 +1,24 @@
 """Phone-size screenshots of EPUB pages with the headless Chrome installed by `mdbindery install-tools`."""
 import json
 import shutil
-import subprocess
 import tempfile
 import zipfile
 from pathlib import Path
 
 from . import tools
 
+# EPUB content is treated as untrusted: scripts are off, and the page may load only files of the extracted EPUB
 JS = r"""
 const puppeteer = require('puppeteer');
+const url = require('url');
 const jobs = JSON.parse(require('fs').readFileSync(process.argv[2], 'utf8'));
+const root = url.pathToFileURL(jobs.root).href + '/';
 (async () => {
   const browser = await puppeteer.launch({headless: 'shell', args: jobs.args});
   const page = await browser.newPage();
+  await page.setJavaScriptEnabled(false);
+  await page.setRequestInterception(true);
+  page.on('request', r => (r.url().startsWith(root) || r.url().startsWith('data:')) ? r.continue() : r.abort());
   await page.setViewport({width: jobs.width, height: jobs.height, deviceScaleFactor: 2});
   for (const j of jobs.pages) {
     await page.goto(require('url').pathToFileURL(j.path).href + (j.frag ? '#' + j.frag : ''), {waitUntil: 'load'});
@@ -29,7 +34,11 @@ const jobs = JSON.parse(require('fs').readFileSync(process.argv[2], 'utf8'));
 """
 
 
-def preview(epub, out, pages=None, width=412, height=915, full=False):
+MAX_MEMBERS = 50000
+MAX_UNPACKED = 2 * 1024 ** 3   # bytes
+
+
+def preview(epub, out, pages=None, width=412, height=915, full=False, warn=print):
     """Screenshot pages (paths inside the EPUB, optionally with #fragment). Returns written files."""
     epub = Path(epub)
     if not epub.is_file():
@@ -45,6 +54,9 @@ def preview(epub, out, pages=None, width=412, height=915, full=False):
     try:
         with zipfile.ZipFile(epub) as z:
             names = z.namelist()
+            if len(names) > MAX_MEMBERS or sum(i.file_size for i in z.infolist()) > MAX_UNPACKED:
+                raise ValueError(f'EPUB too large to preview (over {MAX_MEMBERS} files or '
+                                 f'{MAX_UNPACKED // 1024 ** 3} GB unpacked)')
             for n in names:  # an EPUB is a zip: never write outside the temp folder
                 if not (tmp / n).resolve().is_relative_to(tmp.resolve()):
                     raise ValueError(f'unsafe path in the EPUB: {n}')
@@ -55,8 +67,8 @@ def preview(epub, out, pages=None, width=412, height=915, full=False):
             wanted = ('cover.xhtml', 'title_page.xhtml', 'nav.xhtml', 'ch001.xhtml', 'ch002.xhtml')
             pages = [n.split('EPUB/', 1)[-1] for n in names if n.endswith(wanted)]
         out = Path(out)
-        jobs = {'width': width, 'height': height, 'full': full, 'pages': [],
-                'args': ['--allow-file-access-from-files'] + (['--no-sandbox'] if tools.no_sandbox() else [])}
+        jobs = {'width': width, 'height': height, 'full': full, 'pages': [], 'root': str(tmp.resolve()),
+                'args': ['--no-sandbox'] if tools.no_sandbox() else []}
         missing = []
         for p in pages:
             path, _, frag = p.partition('#')
@@ -77,11 +89,12 @@ def preview(epub, out, pages=None, width=412, height=915, full=False):
         env['NODE_PATH'] = str(pup.parent.parent)
         def shoot():
             (tmp / 'jobs.json').write_text(json.dumps(jobs), encoding='utf-8')
-            return subprocess.run([node, str(tmp / 'shot.js'), str(tmp / 'jobs.json')], env=env, text=True,
-                                  encoding='utf-8', errors='replace', capture_output=True)
+            return tools.run_process([node, str(tmp / 'shot.js'), str(tmp / 'jobs.json')], env=env,
+                                     timeout=tools.deadline(600), tail=65536)
         r = shoot()
         if r.returncode and tools.sandbox_error(r.stderr) and '--no-sandbox' not in jobs['args']:
-            tools.disable_sandbox()
+            # this run only; nothing is remembered for later runs
+            warn('warning: Chrome\'s sandbox cannot start here; taking these screenshots without it')
             jobs['args'].append('--no-sandbox')
             r = shoot()
         if r.returncode:
