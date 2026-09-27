@@ -1,5 +1,7 @@
 # mdbindery
 
+[Website and documentation](https://sagol.github.io/mdbindery/)
+
 Turn a folder or GitHub repository of Markdown chapters into a validated EPUB 3 ebook.
 
 mdbindery is built for books written the GitHub way: one Markdown file per chapter, relative links between files, images in the repository, citations as `[1]` with reference definitions. The book stays readable on GitHub, and the EPUB passes EPUBCheck and the DAISY Ace accessibility check without hand editing.
@@ -101,6 +103,8 @@ The full walk-through is in [docs/tutorial.md](https://github.com/sagol/mdbinder
 
 ## Documentation
 
+The [documentation site](https://sagol.github.io/mdbindery/) brings together installation instructions, CLI usage, configuration examples, validation gates, and a searchable reference for all 59 diagnostic codes. The guides below cover each topic in more detail.
+
 | Document | Contents |
 |---|---|
 | [Tutorial](https://github.com/sagol/mdbindery/blob/main/docs/tutorial.md) | From an existing repository to a validated EPUB, step by step |
@@ -113,6 +117,8 @@ The full walk-through is in [docs/tutorial.md](https://github.com/sagol/mdbinder
 | [Design](https://github.com/sagol/mdbindery/blob/main/docs/design.md) | How it works inside, for contributors |
 
 ## For AI coding agents
+
+The site provides a [documentation index](https://sagol.github.io/mdbindery/llms.txt), a [full technical reference](https://sagol.github.io/mdbindery/llms-full.txt), and a [JSON capability manifest](https://sagol.github.io/mdbindery/agents.json) for coding agents.
 
 [`skills/mdbindery-prepare-repo/SKILL.md`](https://github.com/sagol/mdbindery/blob/main/skills/mdbindery-prepare-repo/SKILL.md) teaches an LLM agent (Claude Code, Codex, Cursor, and similar) how to restructure a repository for mdbindery and loop on `mdbindery check` until it is clean. [`skills/mdbindery/SKILL.md`](https://github.com/sagol/mdbindery/blob/main/skills/mdbindery/SKILL.md) covers running the tool: installing, checking, building, previewing, and reading the reports. Both are plain Markdown and can be copied into any agent's skill or rules folder.
 
