@@ -1,0 +1,103 @@
+{
+  "schema_version": "1.0",
+  "name": "mdbindery",
+  "version": "0.1.1",
+  "summary": "Build EPUB 3 ebooks from Markdown chapters or mdBook projects, run configured validation checks, and review the results.",
+  "author": "Taras Baranyuk",
+  "license": "MIT",
+  "homepage": "https://sagol.github.io/mdbindery/",
+  "repository": "https://github.com/sagol/mdbindery",
+  "pypi": "https://pypi.org/project/mdbindery/",
+  "homebrew": "sagol/tap/mdbindery",
+  "github_action": "sagol/mdbindery@v0.1.1",
+  "ai_resources": {
+    "llms_txt": "https://sagol.github.io/mdbindery/llms.txt",
+    "llms_full_txt": "https://sagol.github.io/mdbindery/llms-full.txt",
+    "skills": [
+      {
+        "name": "mdbindery",
+        "purpose": "Operate mdbindery CLI: install, doctor, init, check, build, preview, read JSON/Markdown reports and build gates.",
+        "url": "https://raw.githubusercontent.com/sagol/mdbindery/main/skills/mdbindery/SKILL.md"
+      },
+      {
+        "name": "mdbindery-prepare-repo",
+        "purpose": "Resolve reported findings in a Markdown repository or mdBook while preserving author meaning and GitHub rendering.",
+        "url": "https://raw.githubusercontent.com/sagol/mdbindery/main/skills/mdbindery-prepare-repo/SKILL.md"
+      }
+    ]
+  },
+  "install": {
+    "linux_macos": "curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/main/install/install.sh | bash",
+    "windows_powershell": "irm https://raw.githubusercontent.com/sagol/mdbindery/main/install/install.ps1 | iex",
+    "pypi_uv": "uv tool install mdbindery && mdbindery install-tools",
+    "pypi_pipx": "pipx install mdbindery && mdbindery install-tools",
+    "homebrew": "brew install sagol/tap/mdbindery && mdbindery install-tools",
+    "github_actions": "- uses: sagol/mdbindery@v0.1.1"
+  },
+  "cli_commands": {
+    "doctor": {
+      "syntax": "mdbindery doctor",
+      "description": "Verify installed tools (pandoc, epubcheck, java, node, mermaid, ace, python).",
+      "exit_codes": {
+        "0": "Required tools (pandoc >= 3.8, EPUBCheck) installed; missing Node tools only print notes.",
+        "1": "pandoc or EPUBCheck missing."
+      }
+    },
+    "init": {
+      "syntax": "mdbindery init [path] [--force]",
+      "description": "Infer book structure and write a starter mdbindery.yaml configuration file in path (default: .).",
+      "exit_codes": {
+        "0": "Configuration file written.",
+        "1": "mdbindery.yaml already exists (without --force) or no Markdown chapters found.",
+        "2": "Folder not found or existing config invalid (without --force)."
+      }
+    },
+    "check": {
+      "syntax": "mdbindery check [target] [-c FILE] [--ref REF] [--build] [--no-render] [--report FILE] [--json FILE] [-q]",
+      "description": "Dry-run static and pandoc analysis on a local folder or Git/GitHub URL. Reports MB001-MB904 findings with severity, suggested fix, and file and line where available.",
+      "exit_codes": {
+        "0": "No errors found (warnings and info notes allowed).",
+        "1": "At least one error found (or trial build failed with --build).",
+        "2": "Target unreadable or report file cannot be written.",
+        "3": "Internal error."
+      }
+    },
+    "build": {
+      "syntax": "mdbindery build [path] [-c CONFIG] [-o OUT] [--no-ace] [--keep-work] [-q]",
+      "description": "Build <output_dir>/<slug>.epub and reports/build.json, running configured gates (links, images, charts, includes, epubcheck, ace, wordcount). Writes reports/epubcheck.json and reports/ace/report.json when those validators run.",
+      "exit_codes": {
+        "0": "EPUB built and no active gate failed (warn or skipped gates do not fail the build).",
+        "1": "EPUB written, but at least one validation gate failed.",
+        "2": "Configuration error or pre-build error.",
+        "3": "Internal error."
+      }
+    },
+    "preview": {
+      "syntax": "mdbindery preview <epub> <out> [page ...] [--width 412] [--height 915] [--full]",
+      "description": "Render phone-sized (default 412x915 CSS px at 2x scale) PNG screenshots of pages inside <epub> to folder <out> using headless Chrome with scripts disabled and external requests blocked.",
+      "exit_codes": {
+        "0": "Screenshots written.",
+        "2": "Invalid arguments, missing Node/Puppeteer (--no-node), or invalid EPUB.",
+        "3": "Internal error."
+      }
+    },
+    "install-tools": {
+      "syntax": "mdbindery install-tools [--no-node] [--java auto|always|never] [--force]",
+      "description": "Downloaded uv, pandoc, EPUBCheck, and Node.js binaries are checked against pinned SHA-256 checksums. Java uses a suitable installed runtime or the latest Temurin 21 build, verified with the checksum returned by its API. Mermaid-cli and Ace have pinned top-level npm versions; their dependencies resolve during installation.",
+      "exit_codes": {
+        "0": "pandoc and epubcheck installed.",
+        "1": "pandoc or epubcheck still missing.",
+        "2": "Installer error."
+      }
+    }
+  },
+  "gates": [
+    "links",
+    "images",
+    "charts",
+    "includes",
+    "epubcheck",
+    "ace",
+    "wordcount"
+  ]
+}

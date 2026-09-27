@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; upgrade-insecure-requests;">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="theme-color" content="#111110">
+
+  <title>mdbindery: Markdown chapters to EPUB 3</title>
+  <meta name="description" content="Build EPUB 3 ebooks from Markdown chapters or mdBook projects, run configured validation checks, and review the results.">
+  <meta name="keywords" content="mdbindery, markdown to epub, github to epub, epub 3 generator, mdbook to epub, epubcheck cli, daisy ace accessibility, pandoc epub builder, reproducible epub, ai agent skill epub">
+  <meta name="author" content="Taras Baranyuk">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+
+  <link rel="canonical" href="https://sagol.github.io/mdbindery/">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="site.webmanifest">
+
+  <!-- Machine-Readable Discovery for AI Agents, LLMs & RAG Crawlers -->
+  <link rel="alternate" type="text/plain" href="llms.txt" title="LLM Summary Index (llms.txt)">
+  <link rel="alternate" type="text/plain" href="llms-full.txt" title="LLM Full Technical Documentation (llms-full.txt)">
+  <link rel="alternate" type="application/json" href="agents.json" title="AI Agent Capabilities Manifest (agents.json)">
+
+  <!-- Open Graph / Social Sharing -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="mdbindery">
+  <meta property="og:title" content="mdbindery: Markdown chapters to EPUB 3">
+  <meta property="og:description" content="Build EPUB 3 ebooks from Markdown chapters or mdBook projects, run configured validation checks, and review the results.">
+  <meta property="og:url" content="https://sagol.github.io/mdbindery/">
+  <meta property="og:image" content="https://sagol.github.io/mdbindery/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="mdbindery commands for checking Markdown chapters and building EPUB 3 ebooks">
+  <meta property="og:locale" content="en_US">
+
+  <!-- Twitter / X Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="mdbindery: Markdown chapters to EPUB 3">
+  <meta name="twitter:description" content="Turn Markdown chapters into EPUB 3, run configured EPUBCheck and DAISY Ace checks, and review validation reports.">
+  <meta name="twitter:image" content="https://sagol.github.io/mdbindery/og-image.png">
+  <meta name="twitter:image:alt" content="mdbindery commands for checking Markdown chapters and building EPUB 3 ebooks">
+
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- Structured Data (Schema.org JSON-LD for Classic SEO & AI Search Engines) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://sagol.github.io/mdbindery/#website",
+        "url": "https://sagol.github.io/mdbindery/",
+        "name": "mdbindery",
+        "description": "Build EPUB 3 ebooks from Markdown chapters or mdBook projects, run configured validation checks, and review the results.",
+        "inLanguage": "en-US"
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://sagol.github.io/mdbindery/#software",
+        "name": "mdbindery",
+        "applicationCategory": "DeveloperApplication",
+        "applicationSubCategory": "Publishing & Ebook Toolchain",
+        "operatingSystem": "Linux, macOS, Windows",
+        "softwareVersion": "0.1.1",
+        "license": "https://opensource.org/licenses/MIT",
+        "url": "https://sagol.github.io/mdbindery/",
+        "downloadUrl": "https://pypi.org/project/mdbindery/",
+        "codeRepository": "https://github.com/sagol/mdbindery",
+        "releaseNotes": "https://github.com/sagol/mdbindery/blob/main/CHANGELOG.md",
+        "author": {
+          "@type": "Person",
+          "name": "Taras Baranyuk",
+          "url": "https://github.com/sagol"
+        },
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "featureList": [
+          "Converts GitHub Markdown repositories and mdBook projects into EPUB 3 ebooks",
+          "Resolves cross-file relative links, GitHub heading slugs, and custom HTML anchors",
+          "Transforms invisible numeric reference definitions [1] into linked reference lists",
+          "Renders Mermaid diagrams to PNG with automatic alt text",
+          "Converts wide tables into phone-readable row cards for configured files",
+          "Runs configured validation gates (links, images, charts, includes, W3C EPUBCheck 5.4.0, DAISY Ace 1.4.6, and per-file word count) and records pass, warn, fail, or skipped states in reports/build.json",
+          "Produces byte-identical EPUB builds when built from the same commit with the same tools, fonts, and saved metadata.identifier",
+          "Ships SKILL.md files for AI coding agents (Claude Code, Codex, Cursor, Antigravity)"
+        ]
+      },
+      {
+        "@type": "HowTo",
+        "@id": "https://sagol.github.io/mdbindery/#howto",
+        "name": "How to build and check an EPUB 3 ebook from Markdown",
+        "description": "Install mdbindery, check your Markdown chapters, initialize mdbindery.yaml, and build an EPUB 3 ebook. Review the validation report before publishing.",
+        "step": [
+          {
+            "@type": "HowToStep",
+            "position": 1,
+            "name": "Install mdbindery and its companion tools",
+            "text": "Run the standalone installer on Linux/macOS (curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/main/install/install.sh | bash) or Windows PowerShell (irm https://raw.githubusercontent.com/sagol/mdbindery/main/install/install.ps1 | iex)."
+          },
+          {
+            "@type": "HowToStep",
+            "position": 2,
+            "name": "Check the repository",
+            "text": "Run mdbindery check https://github.com/OWNER/REPO or mdbindery check . to receive a file-by-file and line-by-line report of MB001-MB904 findings."
+          },
+          {
+            "@type": "HowToStep",
+            "position": 3,
+            "name": "Initialize configuration and build EPUB 3",
+            "text": "Run mdbindery init to write mdbindery.yaml, then run mdbindery build to produce dist/<slug>.epub and verify configured validation gates."
+          }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://sagol.github.io/mdbindery/#faqpage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What makes mdbindery different from running pandoc directly?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "mdbindery uses pandoc for conversion and adds a book workflow around it. It resolves chapter links and anchors, turns numeric reference definitions into visible reference lists, renders Mermaid diagrams, and converts wide tables into row cards for configured files. It also runs configured validation gates and records their results."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does mdbindery support existing mdBook repositories?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. When a folder contains book.toml and SUMMARY.md, mdbindery automatically reads metadata from book.toml, chapter reading order from SUMMARY.md, expands {{#include}} directives (with cycle and size protection), and strips hidden lines in Rust code blocks."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How can coding agents use mdbindery?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "mdbindery provides two agent skills (skills/mdbindery/SKILL.md and skills/mdbindery-prepare-repo/SKILL.md), machine-readable JSON reports (mdbindery check . --json check.json and dist/reports/build.json), plus llms.txt and llms-full.txt documentation endpoints."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What do I need to install mdbindery?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "The installers need no preinstalled Python, Java, or Node.js and no administrator rights. Linux and macOS need Bash, curl, tar, and standard checksum utilities; Windows needs PowerShell. Downloaded uv, pandoc, EPUBCheck, and Node.js binaries are checked against pinned SHA-256 checksums. Java uses a suitable installed runtime or the latest Temurin 21 build, verified with the checksum returned by its API. Mermaid-cli and Ace have pinned top-level npm versions; their dependencies resolve during installation. Once the tools are installed, local builds work offline."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <div id="copy-status-live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+  <header class="site-header" role="banner">
+    <div class="container header-inner">
+      <a class="brand" href="./" aria-label="mdbindery home">
+        <img class="brand-icon" src="favicon.svg" alt="" width="30" height="30">
+        <span>mdbindery</span>
+        <span class="version-pill">v0.1.1</span>
+      </a>
+
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="#features">Features</a>
+        <a href="#install">Install</a>
+        <a href="#pipeline">Gates</a>
+        <a href="#ai-agents">AI agents</a>
+        <a href="#check-codes">Check codes</a>
+        <a href="#config">Configuration</a>
+        <a href="#docs">Docs</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+
+      <div class="header-actions">
+        <a class="llm-pill-link" href="llms.txt" title="Concise Markdown index for LLMs">llms.txt</a>
+        <a class="llm-pill-link" href="llms-full.txt" title="Complete single-file technical reference for LLMs">llms-full.txt</a>
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to light theme">Light theme</button>
+        <a class="btn btn-secondary btn-sm" href="https://github.com/sagol/mdbindery" rel="noopener noreferrer">GitHub</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <!-- ====================================================================
+         Hero Section
+         ==================================================================== -->
+    <section class="hero" aria-labelledby="hero-heading">
+      <div class="container">
+        <div class="hero-eyebrow">
+          <span>CLI &amp; GitHub Action</span>
+          <span>·</span>
+          <span>EPUB 3 + EPUBCheck 5.4.0 + DAISY Ace 1.4.6</span>
+          <span>·</span>
+          <span>MIT License</span>
+        </div>
+
+        <h1 id="hero-heading">Build and check EPUB 3 ebooks from Markdown.</h1>
+
+        <p class="hero-lead">
+          <strong>mdbindery</strong> turns a folder of Markdown chapters or an mdBook project into an EPUB 3 ebook. It converts chapter links, citations, images, Mermaid diagrams, and wide tables while keeping the source readable on GitHub. Configured checks include W3C EPUBCheck and DAISY Ace. Review their results, including warnings and skipped checks, before publishing.
+        </p>
+
+        <div class="hero-cta-row">
+          <a class="btn btn-primary" href="#install">Install mdbindery</a>
+          <a class="btn btn-secondary" href="#ai-agents">Agent skills and docs</a>
+          <a class="btn btn-secondary" href="#check-codes">Browse 59 check codes</a>
+          <a class="btn btn-secondary" href="https://github.com/sagol/mdbindery/blob/main/docs/tutorial.md" rel="noopener noreferrer">Read the tutorial</a>
+        </div>
+
+        <div class="hero-showcase">
+          <div class="code-window" aria-label="mdbindery terminal workflow">
+            <div class="code-window-bar">
+              <div class="window-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+              <span>bash — mdbindery check &amp; build</span>
+              <span>exit 0</span>
+            </div>
+            <pre><code><span class="cmd-comment"># 1. Dry-run check any local folder or remote GitHub URL</span>
+<span class="cmd-prompt">$ </span>mdbindery check https://github.com/OWNER/REPO
+
+<span class="cmd-comment"># 2. Build EPUB 3 and run validation gates</span>
+<span class="cmd-prompt">$ </span>mdbindery build examples/sample-book
+mdbindery: writing-a-book-in-markdown (5 files)
+  k00 README.md: dropped ['Contributing']
+  k01 01-why-markdown.md: 2 refs, 2 image(s)
+  k02 02-structure.md: 1 chart(s), 2 image(s)
+  k03 03-publishing.md: 1 refs
+  k04 appendix-a-checklist.md: tables as cards
+  built dist/writing-a-book-in-markdown.epub (108 KB)
+  <span class="cmd-ok">EPUBCheck: no messages</span>
+  <span class="cmd-ok">Ace: 0 violation(s), 0 blocking</span>
+  <span class="cmd-ok">word count: every file within 2% or 25 words of its source</span>
+<span class="cmd-ok">BUILD OK</span></code></pre>
+          </div>
+
+          <aside class="ereader-card" aria-label="Rendered EPUB 3 phone preview illustration">
+            <div class="ereader-header">
+              <span>EPUB layout illustration</span>
+              <span class="badge badge-pass">EPUB 3 XHTML</span>
+            </div>
+            <div class="ereader-page">
+              <h2>Chapter 2 · Structure &amp; Citations</h2>
+              <p>
+                Chapter links point to pages inside the EPUB, and numeric reference definitions become visible reference lists with linked citations <a href="#features">[1]</a>.
+              </p>
+              <div class="ereader-card-table" aria-label="Phone card representation of a wide Markdown table">
+                <div><strong>Gate</strong><span>EPUBCheck 5.4.0</span></div>
+                <div><strong>Accessibility</strong><span>DAISY Ace (WCAG)</span></div>
+                <div><strong>Word Count</strong><span>Within 2% or 25 words</span></div>
+              </div>
+              <div class="ereader-refs">
+                <strong>References</strong><br>
+                1. <a href="https://www.w3.org/publishing/epub3/" rel="noopener noreferrer">W3C EPUB 3.3 Specification</a>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         Features Section
+         ==================================================================== -->
+    <section id="features" class="section" aria-labelledby="features-heading">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-eyebrow">Capabilities</span>
+          <h2 id="features-heading" class="section-title">Keep your Markdown book workflow</h2>
+          <p class="section-desc">
+            Write and review chapters on GitHub. mdbindery converts the book structure, embeds local assets, and adds EPUB accessibility metadata.
+          </p>
+        </div>
+
+        <div class="feature-grid">
+          <article class="feature-card">
+            <span class="feature-tag">Chapter links</span>
+            <h3>Chapter links and anchors</h3>
+            <p>
+              Relative links between chapters, links to headings in other files, <code>.html</code> links pointing to <code>.md</code> chapters, and custom <code>&lt;a id&gt;</code> anchors become internal EPUB links. Any broken internal target fails the build when <code>strict_links</code> is enabled.
+            </p>
+          </article>
+
+          <article class="feature-card">
+            <span class="feature-tag">References</span>
+            <h3>Visible reference lists</h3>
+            <p>
+              Citations written as <code>[1]</code> paired with <code>[1]: url "Title"</code> reference definitions (which are invisible on GitHub) become a visible, numbered reference list at the end of the chapter with working links. Footnotes become numbered endnotes.
+            </p>
+          </article>
+
+          <article class="feature-card">
+            <span class="feature-tag">Book assets</span>
+            <h3>Images and covers</h3>
+            <p>
+              Images automatically become inline icons, block images, captioned <code>&lt;figure&gt;</code> blocks (from the image title), or dedicated full-page images (<code>"full-page"</code> title). Supply any supported image format for the cover or let mdbindery generate a <code>1600×2560</code> typographic cover from book metadata.
+            </p>
+          </article>
+
+          <article class="feature-card">
+            <span class="feature-tag">Diagrams and math</span>
+            <h3>Mermaid diagrams and MathML</h3>
+            <p>
+              Fenced <code>```mermaid</code> diagrams render to PNG images via <code>mermaid-cli</code> with automatic alt text extracted from the chart labels. TeX formulas convert to native EPUB 3 MathML.
+            </p>
+          </article>
+
+          <article class="feature-card">
+            <span class="feature-tag">Small screens</span>
+            <h3>Wide tables as row cards</h3>
+            <p>
+              For files listed under <code>options.cards.files</code>, wide Markdown tables (<code>options.cards.min_columns</code>, default 9 columns) transform into vertical per-row card blocks with repeated header labels so they read cleanly on a phone.
+            </p>
+          </article>
+
+          <article class="feature-card">
+            <span class="feature-tag">GitHub formatting</span>
+            <h3>GitHub formatting and HTML</h3>
+            <p>
+              GitHub alerts (<code>&gt; [!NOTE]</code>), task lists, monochrome code syntax highlighting, and supported raw README HTML (<code>&lt;br&gt;</code>, <code>&lt;sup&gt;</code>, <code>&lt;img&gt;</code>, <code>&lt;p align&gt;</code>, <code>&lt;details&gt;</code>) become valid EPUB 3 XHTML; unsupported tags are removed and reported.
+            </p>
+          </article>
+
+          <article class="feature-card">
+            <span class="feature-tag">mdBook</span>
+            <h3>Read existing mdBook settings</h3>
+            <p>
+              For <code>mdBook</code> projects, <code>book.toml</code> supplies book metadata, <code>SUMMARY.md</code> sets the reading order, <code>{{#include}}</code> directives expand with cycle and size limits, and hidden Rust lines are stripped.
+            </p>
+          </article>
+
+          <article class="feature-card">
+            <span class="feature-tag">Deterministic</span>
+            <h3>Reproducible builds</h3>
+            <p>
+              Building the same Git commit twice with the same tools, fonts, and a saved <code>metadata.identifier</code> produces byte-identical <code>.epub</code> files. EPUB metadata includes a publication identifier and <code>schema.org</code> accessibility information.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         Installation Section
+         ==================================================================== -->
+    <section id="install" class="section" aria-labelledby="install-heading">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-eyebrow">Installation</span>
+          <h2 id="install-heading" class="section-title">Install on Linux, macOS, Windows, or CI</h2>
+          <p class="section-desc">
+            The installers need no preinstalled Python, Java, or Node.js and no administrator rights. Linux and macOS need Bash, curl, tar, and standard checksum utilities; Windows needs PowerShell. Tools are installed in your user directory. Once installed, local builds work offline. See <a href="#tool-verification">tool versions and verification</a>.
+          </p>
+        </div>
+
+        <div class="tabs-container">
+          <div class="tab-list" role="tablist" aria-label="Installation channels">
+            <button id="tab-unix" class="tab-btn" role="tab" aria-selected="true" aria-controls="panel-unix" tabindex="0" type="button">Linux &amp; macOS</button>
+            <button id="tab-win" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-win" tabindex="-1" type="button">Windows PowerShell</button>
+            <button id="tab-pypi" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-pypi" tabindex="-1" type="button">PyPI (uv / pipx)</button>
+            <button id="tab-brew" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-brew" tabindex="-1" type="button">Homebrew</button>
+            <button id="tab-gha" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-gha" tabindex="-1" type="button">GitHub Actions</button>
+          </div>
+
+          <div id="panel-unix" class="tab-panel" role="tabpanel" aria-labelledby="tab-unix">
+            <p class="tab-panel-title">Linux &amp; macOS</p>
+            <p>Installs <code>mdbindery</code> to <code>~/.local/bin</code> and managed tools to <code>~/.local/share/mdbindery</code> (macOS: <code>~/Library/Application Support/mdbindery</code>):</p>
+            <div class="code-block-wrap">
+              <button class="copy-btn" type="button" data-copy-target="code-install-unix">Copy</button>
+              <pre><code id="code-install-unix">curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/main/install/install.sh | bash</code></pre>
+            </div>
+            <p>Pin a specific release tag or pass <code>--no-node</code> to skip Node.js tools (<code>~370 MB</code> instead of <code>~1.5 GB</code>):</p>
+            <div class="code-block-wrap">
+              <button class="copy-btn" type="button" data-copy-target="code-install-unix-pin">Copy</button>
+              <pre><code id="code-install-unix-pin">curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/v0.1.1/install/install.sh | bash -s -- --ref v0.1.1</code></pre>
+            </div>
+          </div>
+
+          <div id="panel-win" class="tab-panel" role="tabpanel" aria-labelledby="tab-win">
+            <p class="tab-panel-title">Windows PowerShell</p>
+            <p>Installs to <code>%USERPROFILE%\.local\bin</code> (added to user <code>PATH</code>) and tools to <code>%LOCALAPPDATA%\mdbindery</code>:</p>
+            <div class="code-block-wrap">
+              <button class="copy-btn" type="button" data-copy-target="code-install-win">Copy</button>
+              <pre><code id="code-install-win">irm https://raw.githubusercontent.com/sagol/mdbindery/main/install/install.ps1 | iex</code></pre>
+            </div>
+          </div>
+
+          <div id="panel-pypi" class="tab-panel" role="tabpanel" aria-labelledby="tab-pypi">
+            <p class="tab-panel-title">PyPI (uv / pipx)</p>
+            <p>Install the Python package from PyPI with <code>uv</code> or <code>pipx</code>, then install the companion tools:</p>
+            <div class="code-block-wrap">
+              <button class="copy-btn" type="button" data-copy-target="code-install-pypi">Copy</button>
+              <pre><code id="code-install-pypi">uv tool install mdbindery
+mdbindery install-tools
+mdbindery doctor</code></pre>
+            </div>
+          </div>
+
+          <div id="panel-brew" class="tab-panel" role="tabpanel" aria-labelledby="tab-brew">
+            <p class="tab-panel-title">Homebrew (macOS &amp; Linux)</p>
+            <p>Install from the Homebrew tap on macOS or Linux, then run <code>install-tools</code>:</p>
+            <div class="code-block-wrap">
+              <button class="copy-btn" type="button" data-copy-target="code-install-brew">Copy</button>
+              <pre><code id="code-install-brew">brew install sagol/tap/mdbindery
+mdbindery install-tools
+mdbindery doctor</code></pre>
+            </div>
+          </div>
+
+          <div id="panel-gha" class="tab-panel" role="tabpanel" aria-labelledby="tab-gha">
+            <p class="tab-panel-title">GitHub Actions</p>
+            <p>Use the official composite GitHub Action with tool caching across workflow runs:</p>
+            <div class="code-block-wrap">
+              <button class="copy-btn" type="button" data-copy-target="code-install-gha">Copy</button>
+              <pre><code id="code-install-gha">- uses: sagol/mdbindery@v0.1.1
+- run: mdbindery build path/to/book</code></pre>
+            </div>
+          </div>
+        </div>
+        <p id="tool-verification">Downloaded uv, pandoc, EPUBCheck, and Node.js binaries are checked against pinned SHA-256 checksums. Java uses a suitable installed runtime or the latest Temurin 21 build, verified with the checksum returned by its API. Mermaid-cli and Ace have pinned top-level npm versions; their dependencies resolve during installation.</p>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         Validation Gates Pipeline Section
+         ==================================================================== -->
+    <section id="pipeline" class="section" aria-labelledby="pipeline-heading">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-eyebrow">Build checks</span>
+          <h2 id="pipeline-heading" class="section-title">7 validation gates with structured reporting</h2>
+          <p class="section-desc">
+            <code>mdbindery build</code> writes the EPUB and evaluates its validation gates, recording each gate's state (<code>pass</code>, <code>warn</code>, <code>fail</code>, or <code>skipped</code>) in <code>dist/reports/build.json</code>. If any gate fails, the command exits with status <code>1</code>.
+          </p>
+        </div>
+
+        <div class="gates-grid">
+          <div class="gate-card">
+            <div class="gate-header">
+              <span class="gate-name">1. links</span>
+              <span class="badge badge-pass">Gate</span>
+            </div>
+            <p>Fails on unresolved internal chapter anchors or links to missing files when <code>options.strict_links</code> is <code>true</code> (default); warns when <code>false</code>.</p>
+          </div>
+
+          <div class="gate-card">
+            <div class="gate-header">
+              <span class="gate-name">2. images</span>
+              <span class="badge badge-pass">Gate</span>
+            </div>
+            <p>Fails when an image is missing, remote (<code>http://</code>, <code>https://</code>), empty, or (for untrusted repositories checked by URL) outside the repository checkout.</p>
+          </div>
+
+          <div class="gate-card">
+            <div class="gate-header">
+              <span class="gate-name">3. charts</span>
+              <span class="badge badge-pass">Gate</span>
+            </div>
+            <p>Fails when a <code>```mermaid</code> block fails to render. Warns (using chart placeholders) if <code>mermaid-cli</code> is missing while <code>options.mermaid</code> is <code>png</code>.</p>
+          </div>
+
+          <div class="gate-card">
+            <div class="gate-header">
+              <span class="gate-name">4. includes</span>
+              <span class="badge badge-pass">Gate</span>
+            </div>
+            <p>Validates <code>mdBook</code> <code>{{#include}}</code> expansions; recorded in <code>build.json</code> and fails when a directive cannot be expanded (missing file, cycle, or size limit).</p>
+          </div>
+
+          <div class="gate-card">
+            <div class="gate-header">
+              <span class="gate-name">5. epubcheck</span>
+              <span class="badge badge-pass">Gate</span>
+            </div>
+            <p>Runs W3C <code>EPUBCheck v5.4.0</code> (unless <code>options.epubcheck: false</code>). Fails on any <code>FATAL</code> or <code>ERROR</code> message or if EPUBCheck cannot run.</p>
+          </div>
+
+          <div class="gate-card">
+            <div class="gate-header">
+              <span class="gate-name">6. ace</span>
+              <span class="badge badge-pass">Gate</span>
+            </div>
+            <p>Runs <code>DAISY Ace 1.4.6</code> (skipped with <code>--no-ace</code> or <code>options.ace: false</code>; warns if Ace is not installed). Fails on unwaived <code>critical</code> or <code>serious</code> violations.</p>
+          </div>
+
+          <div class="gate-card">
+            <div class="gate-header">
+              <span class="gate-name">7. wordcount</span>
+              <span class="badge badge-pass">Gate</span>
+            </div>
+            <p>Fails if any chapter's EPUB word count differs from its prepared Markdown source by more than <code>2%</code> (<code>wordcount_tolerance</code>) and <code>25 words</code> (<code>wordcount_min_words</code>).</p>
+          </div>
+        </div>
+
+        <div class="table-scroll">
+          <table aria-label="CLI commands and exit codes reference">
+            <thead>
+              <tr>
+                <th>Command</th>
+                <th>Purpose</th>
+                <th>Exit Codes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>mdbindery doctor</code></td>
+                <td>Inspect installed versions of <code>pandoc</code>, <code>epubcheck</code>, <code>java</code>, <code>node</code>, <code>mermaid</code>, <code>ace</code>, and <code>python</code>.</td>
+                <td><code>0</code> required tools OK · <code>1</code> pandoc or EPUBCheck missing</td>
+              </tr>
+              <tr>
+                <td><code>mdbindery check [target]</code></td>
+                <td>Dry-run static + pandoc check on a local folder or GitHub/Git URL. Supports <code>-c FILE</code>, <code>--ref REF</code>, <code>--build</code>, <code>--no-render</code>, <code>--json FILE</code>, <code>--report FILE</code>, <code>-q</code>.</td>
+                <td><code>0</code> no errors · <code>1</code> errors found · <code>2</code> target unreadable · <code>3</code> internal error</td>
+              </tr>
+              <tr>
+                <td><code>mdbindery init [path] [--force]</code></td>
+                <td>Infer reading order, metadata, cover, and mdBook settings and write a starter <code>mdbindery.yaml</code>.</td>
+                <td><code>0</code> written · <code>1</code> exists or empty · <code>2</code> folder not found or bad config</td>
+              </tr>
+              <tr>
+                <td><code>mdbindery build [path]</code></td>
+                <td>Build <code>dist/&lt;slug&gt;.epub</code> and <code>dist/reports/build.json</code>, running configured validation gates. Supports <code>-c CONFIG</code>, <code>-o OUT</code>, <code>--no-ace</code>, <code>--keep-work</code>, <code>-q</code>.</td>
+                <td><code>0</code> BUILD OK · <code>1</code> gate failed · <code>2</code> config/build error · <code>3</code> internal error</td>
+              </tr>
+              <tr>
+                <td><code>mdbindery preview &lt;epub&gt; &lt;out&gt; [page ...]</code></td>
+                <td>Capture phone-size (default <code>412×915</code> CSS px at 2x scale) PNG screenshots of EPUB pages in headless Chrome with scripts off and external requests blocked. Supports <code>--width</code>, <code>--height</code>, <code>--full</code>.</td>
+                <td><code>0</code> screenshots written · <code>2</code> bad input or missing tools · <code>3</code> internal error</td>
+              </tr>
+              <tr>
+                <td><code>mdbindery install-tools</code></td>
+                <td>Install companion tools using the <a href="#tool-verification">version and verification policy</a>. Supports <code>--no-node</code>, <code>--java</code>, <code>--force</code>.</td>
+                <td><code>0</code> required tools OK · <code>1</code> pandoc/EPUBCheck missing · <code>2</code> install failed</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         AI Agents & LLM Optimization Hub
+         ==================================================================== -->
+    <section id="ai-agents" class="section" aria-labelledby="ai-agents-heading">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-eyebrow">Agent integration</span>
+          <h2 id="ai-agents-heading" class="section-title">Agent skills and JSON reports</h2>
+          <p class="section-desc">
+            mdbindery ships with self-contained <code>SKILL.md</code> instructions and structured JSON reports so AI coding agents (Claude Code, OpenAI Codex, Cursor, Google Antigravity, Gemini CLI, Windsurf, Aider) can inspect, repair, build, and preview Markdown book repositories.
+          </p>
+        </div>
+
+        <div class="agent-grid">
+          <article class="agent-card">
+            <h3>
+              <span>Skill 1: <code>mdbindery</code></span>
+              <span class="badge badge-info">Run and validate</span>
+            </h3>
+            <p>
+              Instructions for installation, tool checks, configuration, builds, and previews. Run <code>mdbindery check . --json check.json</code> for a local book, or replace <code>.</code> with a repository URL. Review reports and screenshots before publishing.
+            </p>
+            <a class="btn btn-secondary btn-sm" href="https://raw.githubusercontent.com/sagol/mdbindery/main/skills/mdbindery/SKILL.md" rel="noopener noreferrer">Read the CLI skill</a>
+          </article>
+
+          <article class="agent-card">
+            <h3>
+              <span>Skill 2: <code>mdbindery-prepare-repo</code></span>
+              <span class="badge badge-pass">Check and fix</span>
+            </h3>
+            <p>
+              Instructions to resolve <code>MB001</code>–<code>MB904</code> findings in a Markdown repository or <code>mdBook</code>: reading order, headings, anchors, <code>[1]</code> citations, alt text, wide tables, and raw HTML. Preserve the author’s meaning and GitHub rendering when making changes.
+            </p>
+            <a class="btn btn-secondary btn-sm" href="https://raw.githubusercontent.com/sagol/mdbindery/main/skills/mdbindery-prepare-repo/SKILL.md" rel="noopener noreferrer">Read the repository preparation skill</a>
+          </article>
+        </div>
+
+        <h3>Prompt for a coding agent</h3>
+        <div class="code-block-wrap">
+          <button class="copy-btn" type="button" data-copy-target="code-agent-prompt">Copy</button>
+          <pre><code id="code-agent-prompt">Read https://sagol.github.io/mdbindery/llms-full.txt and the two official skills:
+- https://raw.githubusercontent.com/sagol/mdbindery/main/skills/mdbindery/SKILL.md
+- https://raw.githubusercontent.com/sagol/mdbindery/main/skills/mdbindery-prepare-repo/SKILL.md
+
+Then run `mdbindery check . --json /tmp/mdb-check.json --report /tmp/mdb-check.md -q`, propose a plan to resolve all MB errors and warnings without altering author prose meaning, and loop until `mdbindery build` finishes with `BUILD OK` and no gate skipped or at `warn`.</code></pre>
+        </div>
+
+        <div class="endpoints-bar" aria-label="Machine-readable AI and LLM endpoints">
+          <div class="endpoint-item">
+            <strong><a href="llms.txt">/llms.txt</a></strong>
+            <span>Concise llmstxt.org index with CLI syntax, install commands, and doc links.</span>
+          </div>
+          <div class="endpoint-item">
+            <strong><a href="llms-full.txt">/llms-full.txt</a></strong>
+            <span>Single-file full reference: CLI flags, YAML schema, 7 gates, and 59 MB codes.</span>
+          </div>
+          <div class="endpoint-item">
+            <strong><a href="agents.json">/agents.json</a></strong>
+            <span>Project JSON capability manifest (pointer also at <code>/.well-known/agent.json</code>).</span>
+          </div>
+          <div class="endpoint-item">
+            <strong><code>mdbindery check . --json FILE</code></strong>
+            <span>Structured diagnostic output with <code>ok</code>, <code>counts</code>, <code>by_code</code>, <code>facts</code>, and <code>findings</code>.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         Interactive Check codes Reference (MB001 - MB904)
+         ==================================================================== -->
+    <section id="check-codes" class="section" aria-labelledby="check-codes-heading">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-eyebrow">Diagnostics</span>
+          <h2 id="check-codes-heading" class="section-title">All 59 check codes (MB001–MB904)</h2>
+          <p class="section-desc">
+            Findings from <code>mdbindery check</code> include a diagnostic code, severity, location where available, and suggested fix. Filter by severity or search by code or keyword.
+          </p>
+        </div>
+
+        <div class="filter-controls" role="region" aria-label="Filter check codes">
+          <input id="mb-search" class="search-input" type="search" placeholder="Search codes or topics, e.g. MB200" aria-label="Search check codes">
+          <div class="filter-pills" role="group" aria-label="Filter by severity">
+            <button class="filter-pill" type="button" data-filter="all" aria-pressed="true">All (59)</button>
+            <button class="filter-pill" type="button" data-filter="error" aria-pressed="false">Error</button>
+            <button class="filter-pill" type="button" data-filter="warning" aria-pressed="false">Warning</button>
+            <button class="filter-pill" type="button" data-filter="info" aria-pressed="false">Info</button>
+          </div>
+          <span id="mb-count-status" class="version-pill" aria-live="polite">Showing 59 of 59 check codes</span>
+        </div>
+
+        <div class="table-scroll table-scroll-limited">
+          <table aria-label="mdbindery MB001 to MB904 diagnostic check codes">
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Severity</th>
+                <th>Reported When</th>
+                <th>Fix</th>
+              </tr>
+            </thead>
+            <tbody id="mb-codes-tbody">
+              <tr data-severity="warning">
+                <td><code>MB001</code></td>
+                <td><span class="badge badge-warn">warning</span></td>
+                <td><code>pandoc</code> (&ge;3.8) is not installed; internal link and HTML analysis skipped.</td>
+                <td>Run <code>mdbindery install-tools</code> and verify with <code>mdbindery doctor</code>.</td>
+              </tr>
+              <tr data-severity="error">
+                <td><code>MB100</code></td>
+                <td><span class="badge badge-error">error</span></td>
+                <td>Reading order is empty (no Markdown chapter files found).</td>
+                <td>Add <code>.md</code> chapters to the book folder or list them under <code>files:</code> in <code>mdbindery.yaml</code>.</td>
+              </tr>
+              <tr data-severity="info">
+                <td><code>MB101</code></td>
+                <td><span class="badge badge-info">info</span></td>
+                <td>No <code>mdbindery.yaml</code> configuration file found; using inferred settings.</td>
+                <td>Run <code>mdbindery init</code> to generate <code>mdbindery.yaml</code>.</td>
+              </tr>
+              <tr data-severity="error warning">
+                <td><code>MB102</code></td>
+                <td><span class="badge badge-error">error / warn</span></td>
+                <td>Configuration file has invalid YAML, wrong types, paths outside repo, or unknown keys.</td>
+                <td>Fix syntax, types, or key names in <code>mdbindery.yaml</code>.</td>
+              </tr>
+              <tr data-severity="error">
+                <td><code>MB103</code></td>
+                <td><span class="badge badge-error">error</span></td>
+                <td>A file listed under <code>files:</code> in <code>mdbindery.yaml</code> does not exist.</td>
+                <td>Fix the relative file path or remove the missing entry from <code>files:</code>.</td>
+              </tr>
+              <tr data-severity="info">
+                <td><code>MB104</code></td>
+                <td><span class="badge badge-info">info</span></td>
+                <td>A Markdown file in the repository is not included in the reading order.</td>
+                <td>Add the file to <code>files:</code> if it belongs in the book, or leave it excluded.</td>
+              </tr>
+              <tr data-severity="error info">
+                <td><code>MB105</code></td>
+                <td><span class="badge badge-error">error / info</span></td>
+                <td>Error: file is not valid UTF-8. Info: file has a UTF-8 BOM or CRLF line endings.</td>
+                <td>Re-save the file as UTF-8 without BOM and LF line endings.</td>
+              </tr>
+              <tr data-severity="warning">
+                <td><code>MB106</code></td>
+                <td><span class="badge badge-warn">warning</span></td>
+                <td>Chapter file has no level-1 <code>#</code> heading.</td>
+                <td>Add a <code># Chapter Title</code> heading at the top or set <code>title:</code> on the <code>files:</code> entry.</td>
+              </tr>
+              <tr data-severity="warning info">
+                <td><code>MB107</code></td>
+                <td><span class="badge badge-warn">warn / info</span></td>
+                <td>Warning: one file has multiple <code>#</code> headings. Info: several files share the same first heading.</td>
+                <td>Demote extra <code>#</code> headings inside a chapter to <code>##</code>.</td>
+              </tr>
+              <tr data-severity="warning">
+                <td><code>MB108</code></td>
+                <td><span class="badge badge-warn">warning</span></td>
+                <td>A heading skips a hierarchy level (e.g. <code>#</code> directly to <code>###</code>).</td>
+                <td>Use sequential heading levels (<code>#</code>, <code>##</code>, <code>###</code>) to avoid skipped-heading accessibility findings.</td>
+              </tr>
+              <tr data-severity="warning">
+                <td><code>MB109</code></td>
+                <td><span class="badge badge-warn">warning</span></td>
+                <td>Chapter file is empty (or empty after <code>drop_sections</code> / <code>drop_lines</code>).</td>
+                <td>Remove the file from <code>files:</code> or add chapter content.</td>
+              </tr>
+              <tr data-severity="warning">
+                <td><code>MB110</code></td>
+                <td><span class="badge badge-warn">warning</span></td>
+                <td>Content appears above the chapter's first level-1 <code>#</code> heading.</td>
+                <td>Move content below the <code>#</code> heading or strip repository badges via <code>options.drop_lines</code>.</td>
+              </tr>
+              <tr data-severity="warning">
+                <td><code>MB111</code></td>
+                <td><span class="badge badge-warn">warning</span></td>
+                <td>Chapter starts with YAML front matter (which pandoc drops).</td>
+                <td>Move book metadata into <code>mdbindery.yaml</code> or set <code>title:</code> on the file entry.</td>
+              </tr>
+              <tr data-severity="info">
+                <td><code>MB120</code></td>
+                <td><span class="badge badge-info">info</span></td>
+                <td>Book title was inferred automatically.</td>
+                <td>Set <code>metadata.title</code> explicitly in <code>mdbindery.yaml</code>.</td>
+              </tr>
+              <tr data-severity="warning">
+                <td><code>MB121</code></td>
+                <td><span class="badge badge-warn">warning</span></td>
+                <td>No author specified in metadata.</td>
+                <td>Set <code>metadata.authors: ["First Last"]</code> in <code>mdbindery.yaml</code>.</td>
+              </tr>
+              <tr data-severity="info">
+                <td><code>MB122</code></td>
+                <td><span class="badge badge-info">info</span></td>
+                <td>Book language was inferred as <code>en-US</code>.</td>
+                <td>Set <code>metadata.lang</code> (BCP-47 tag) in <code>mdbindery.yaml</code>.</td>
+              </tr>
+              <tr data-severity="warning">
+                <td><code>MB123</code></td>
+                <td><span class="badge badge-warn">warning</span></td>
+                <td>No rights statement or license file found.</td>
+                <td>Set <code>metadata.rights</code> or add a <code>LICENSE</code> file to the repository.</td>
+              </tr>
+              <tr data-severity="info">
+                <td><code>MB124</code></td>
+                <td><span class="badge badge-info">info</span></td>
+                <td><code>metadata.identifier</code> is empty; a permanent <code>urn:uuid</code> will be generated on first build.</td>
+                <td>Keep <code>identifier:</code> in <code>mdbindery.yaml</code> so the generated ID is saved, or set your own permanent ID.</td>
+              </tr>
+              <tr data-severity="info">
+                <td><code>MB125</code></td>
+                <td><span class="badge badge-info">info</span></td>
+                <td>Reading order was inferred from <code>SUMMARY.md</code>, <code>README.md</code> links, or file names.</td>
+                <td>Review the reading order and lock it under <code>files:</code> in <code>mdbindery.yaml</code>.</td>
+              </tr>
+              <tr data-severity="warning">
+                <td><code>MB126</code></td>
+                <td><span class="badge badge-warn">warning</span></td>
+                <td>A table-of-contents file (<code>SUMMARY.md</code>, <code>toc.md</code>) is listed in <code>files:</code>.</td>
+                <td>Remove it from <code>files:</code>; mdbindery generates the EPUB navigation TOC automatically.</td>
+              </tr>
+              <tr data-severity="info">
+                <td><code>MB130</code></td>
+                <td><span class="badge badge-info">info</span></td>
+                <td>Book uses an <code>mdBook</code> layout (<code>book.toml</code> + <code>SUMMARY.md</code>).</td>
+                <td>Informational note; metadata and reading order are read from <code>book.toml</code> and <code>SUMMARY.md</code>.</td>
+              </tr>
+              <tr data-severity="error">
+                <td><code>MB131</code></td>
+                <td><span class="badge badge-error">error</span></td>
+                <td>An <code>mdBook</code> <code>{{#include}}</code> directive could not be expanded (missing file, cycle, or limit).</td>
+                <td>Fix the included file path, line range, or circular include chain.</td>
+              </tr>
+              <tr data-severity="error">
+                <td><code>MB200</code></td>
+                <td><span class="badge badge-error">error</span></td>
+                <td>Link points to a missing <code>#anchor</code> in the target chapter.</td>
+                <td>Point the link at an existing GitHub heading slug or add <code>&lt;a id="..."&gt;&lt;/a&gt;</code>.</td>
+              </tr>
+              <tr data-severity="warning">
+                <td><code>MB201</code></td>
+                <td><span class="badge badge-warn">warning</span></td>
+                <td>Link anchor matched only approximately (when punctuation is ignored).</td>
+                <td>Update the link fragment to match the exact GitHub heading slug.</td>
+              </tr>
+              <tr data-severity="warning info">
+                <td><code>MB202</code></td>
+                <td><span class="badge badge-warn">warn / info</span></td>
+                <td>Link points to an existing repository file that is outside the book's reading order.</td>
+                <td>Set <code>source_url</code> in <code>mdbindery.yaml</code> so the link points online, or add the file to <code>files:</code>.</td>
+              </tr>
+              <tr data-severity="warning">
+                <td><code>MB203</code></td>
+                <td><span class="badge badge-warn">warning</span></td>
+                <td>Relative link points to a website path that does not exist in the repository.</td>
+                <td>Use a full <code>https://</code> URL or set <code>source_url</code>.</td>
+              </tr>
+              <tr data-severity="error">
+                <td><code>MB204</code></td>
+                <td><span class="badge badge-error">error</span></td>
+                <td>Link points to a local file that does not exist.</td>
+                <td>Fix the relative path (relative to the current Markdown file) or remove the broken link.</td>
+              </tr>
+              <tr data-severity="info">
+                <td><code>MB205</code></td>
+                <td><span class="badge badge-info">info</span></td>
+                <td>A <code>.html</code> or folder link was resolved to a matching <code>.md</code> chapter.</td>
+                <td>Optional: change the link target to <code>.md</code> so it also works directly on GitHub.</td>
+              </tr>
+              <tr data-severity="warning">
+                <td><code>MB300</code></td>
+                <td><span class="badge badge-warn">warning</span></td>
+                <td>Numeric reference definition <code>[n]: url</code> is never cited in the file.</td>
+                <td>Cite <code>[n]</code> in the text or remove the unused definition.</td>
+              </tr>
+              <tr data-severity="error">
+                <td><code>MB301</code></td>
+                <td><span class="badge badge-error">error</span></td>
+                <td>Reference label <code>[n]</code> is defined more than once with different URLs in the same file.</td>
+                <td>Give each reference a unique number within the chapter.</td>
+              </tr>
+              <tr data-severity="warning">
+                <td><code>MB302</code></td>
+                <td><span class="badge badge-warn">warning</span></td>
+                <td>Citation <code>[n]</code> in text has no matching <code>[n]: url</code> definition in that file.</td>
+                <td>Add <code>[n]: https://... "Title"</code> at the bottom of the chapter.</td>
+              </tr>
+              <tr data-severity="info">
+                <td><code>MB303</code></td>
+                <td><span class="badge badge-info">info</span></td>
+                <td>File uses <code>[n]</code> citations but has no <code>References</code> heading; mdbindery appends one.</td>
+                <td>Optional: add <code>## References</code> where you want the reference list placed.</td>
+              </tr>
+              <tr data-severity="error">
+                <td><code>MB304</code></td>
+                <td><span class="badge badge-error">error</span></td>
+                <td>Footnote reference <code>[^id]</code> has no matching <code>[^id]: text</code> definition.</td>
+                <td>Add the footnote definition or escape the bracket as <code>\[</code>.</td>
+              </tr>
+              <tr data-severity="warning">
+                <td><code>MB305</code></td>
+                <td><span class="badge badge-warn">warning</span></td>
+                <td>Footnote definition <code>[^id]:</code> is never referenced in the chapter.</td>
+                <td>Reference <code>[^id]</code> in the text or remove the unused footnote definition.</td>
+              </tr>
+              <tr data-severity="info">
+                <td><code>MB306</code></td>
+                <td><span class="badge badge-info">info</span></td>
+                <td>Citation definition <code>[n]: url</code> has no title; the raw URL will be shown.</td>
+                <td>Add a descriptive title in quotes: <code>[n]: https://... "Source Title"</code>.</td>
+              </tr>
+              <tr data-severity="error">
+                <td><code>MB400</code></td>
+                <td><span class="badge badge-error">error</span></td>
+                <td>Image has an empty path or its file does not exist on disk.</td>
+                <td>Fix the image path (relative to the Markdown file, or <code>/</code> for repository root).</td>
+              </tr>
+              <tr data-severity="error info">
+                <td><code>MB401</code></td>
+                <td><span class="badge badge-error">error / info</span></td>
+                <td>Error: remote HTTP(S) image URL. Info: GitHub URL pointing to a file in the same repo.</td>
+                <td>Download remote images into <code>images/</code> inside the repository and use relative paths.</td>
+              </tr>
+              <tr data-severity="warning">
+                <td><code>MB402</code></td>
+                <td><span class="badge badge-warn">warning</span></td>
+                <td>Image has no alt text (<code>![](path)</code> or <code>&lt;img&gt;</code> without <code>alt</code>).</td>
+                <td>Add descriptive alt text: <code>![what the image shows](path)</code>.</td>
+              </tr>
+              <tr data-severity="error warning">
+                <td><code>MB403</code></td>
+                <td><span class="badge badge-error">error / warn</span></td>
+                <td>Unsupported or non-standard image format (e.g. TIFF, BMP, ICO, AVIF).</td>
+                <td>Convert the image to PNG, JPEG, SVG, GIF, or WebP.</td>
+              </tr>
+              <tr data-severity="warning">
+                <td><code>MB404</code></td>
+                <td><span class="badge badge-warn">warning</span></td>
+                <td>Image exceeds <code>3200 px</code> on its long side or file size exceeds <code>5 MB</code>.</td>
+                <td>Scale to at most 3200 px on the long side and compress photos (e.g. <code>magick big.jpg -resize '3200x3200&gt;' -quality 85 big.jpg</code>).</td>
+              </tr>
+              <tr data-severity="warning info">
+                <td><code>MB405</code></td>
+                <td><span class="badge badge-warn">warn / info</span></td>
+                <td>Warning: SVG contains scripts or <code>foreignObject</code>. Info: animated GIF/PNG/WebP image.</td>
+                <td>Remove scripts/foreignObject from SVG; replace animated images with a static frame if needed.</td>
+              </tr>
+              <tr data-severity="error warning">
+                <td><code>MB406</code></td>
+                <td><span class="badge badge-error">error / warn</span></td>
+                <td>Error (URL check): image path leaves repository checkout. Warning (local check): image lies outside book source folder.</td>
+                <td>Copy the image into <code>images/</code> inside the book folder.</td>
+              </tr>
+              <tr data-severity="warning">
+                <td><code>MB407</code></td>
+                <td><span class="badge badge-warn">warning</span></td>
+                <td>Symlink in a URL-checked repository pointed outside the checkout and was removed.</td>
+                <td>Replace the external symlink with a real file inside the repository.</td>
+              </tr>
+              <tr data-severity="info">
+                <td><code>MB410</code></td>
+                <td><span class="badge badge-info">info</span></td>
+                <td>No cover image found; mdbindery will generate a typographic cover automatically.</td>
+                <td>Optional: add <code>images/cover.jpg</code> (<code>1600×2560 px</code>) or set <code>cover.image</code>.</td>
+              </tr>
+              <tr data-severity="warning">
+                <td><code>MB411</code></td>
+                <td><span class="badge badge-warn">warning</span></td>
+                <td>Cover short side is below <code>1400 px</code>, height:width ratio is outside <code>1.4</code> to <code>1.7</code> (ideal <code>1.6:1</code>), or color mode is CMYK.</td>
+                <td>Use an RGB JPEG or PNG around <code>1600×2560 px</code> (at least 1400 px on the short side).</td>
+              </tr>
+              <tr data-severity="error warning">
+                <td><code>MB412</code></td>
+                <td><span class="badge badge-error">error / warn</span></td>
+                <td>Error: cover image missing or unreadable. Warning: cover format converted to JPEG.</td>
+                <td>Fix <code>cover.image</code> path or supply a valid JPEG/PNG file.</td>
+              </tr>
+              <tr data-severity="error warning">
+                <td><code>MB500</code></td>
+                <td><span class="badge badge-error">error / warn</span></td>
+                <td>Chapter contains raw HTML tags that EPUB 3 cannot keep (<code>&lt;script&gt;</code>, <code>&lt;iframe&gt;</code>, <code>&lt;form&gt;</code>, <code>&lt;video&gt;</code>, etc.).</td>
+                <td>Replace unsupported HTML elements with Markdown text, tables, or static images.</td>
+              </tr>
+              <tr data-severity="info">
+                <td><code>MB501</code></td>
+                <td><span class="badge badge-info">info</span></td>
+                <td>Raw HTML was simplified or stripped during conversion.</td>
+                <td>Verify the chapter in the built EPUB; replace raw HTML with Markdown if needed.</td>
+              </tr>
+              <tr data-severity="warning">
+                <td><code>MB600</code></td>
+                <td><span class="badge badge-warn">warning</span></td>
+                <td>Pipe table has <code>options.wide_table_warn</code> (default 9) or more columns and its file is not listed in <code>options.cards.files</code>.</td>
+                <td>List the file under <code>options.cards.files</code> (renders tables with &ge;<code>options.cards.min_columns</code> columns as row cards) or split the table.</td>
+              </tr>
+              <tr data-severity="warning">
+                <td><code>MB700</code></td>
+                <td><span class="badge badge-warn">warning</span></td>
+                <td>Book contains Mermaid charts, <code>options.mermaid</code> is <code>png</code>, and <code>mermaid-cli</code> is not installed.</td>
+                <td>Run <code>mdbindery install-tools</code> (without <code>--no-node</code>).</td>
+              </tr>
+              <tr data-severity="error">
+                <td><code>MB701</code></td>
+                <td><span class="badge badge-error">error</span></td>
+                <td>A <code>```mermaid</code> chart failed to render due to a syntax error.</td>
+                <td>Fix the Mermaid diagram syntax at the reported file and line.</td>
+              </tr>
+              <tr data-severity="info">
+                <td><code>MB710</code></td>
+                <td><span class="badge badge-info">info</span></td>
+                <td>Book contains TeX math expressions (converted to MathML).</td>
+                <td>Informational note; verify formulas in an EPUB 3 reader.</td>
+              </tr>
+              <tr data-severity="warning">
+                <td><code>MB711</code></td>
+                <td><span class="badge badge-warn">warning</span></td>
+                <td>Text between dollar signs <code>$...$</code> was read as a math formula or failed TeX parsing.</td>
+                <td>Escape literal currency dollar signs as <code>\$</code> or wrap code in backticks.</td>
+              </tr>
+              <tr data-severity="info">
+                <td><code>MB720</code></td>
+                <td><span class="badge badge-info">info</span></td>
+                <td>Code block has lines longer than 90 characters.</td>
+                <td>Optional: wrap long lines so code blocks read comfortably on narrow screens.</td>
+              </tr>
+              <tr data-severity="error warning">
+                <td><code>MB900</code></td>
+                <td><span class="badge badge-error">error / warn</span></td>
+                <td>Trial build (<code>--build</code>): <code>EPUBCheck</code> reported an error or warning.</td>
+                <td>Fix the underlying Markdown/HTML construct flagged by EPUBCheck.</td>
+              </tr>
+              <tr data-severity="error warning info">
+                <td><code>MB901</code></td>
+                <td><span class="badge badge-error">error / warn</span></td>
+                <td>Trial build (<code>--build</code>): <code>DAISY Ace</code> reported an accessibility violation (or Ace is missing).</td>
+                <td>Fix heading order, alt text, or table structure; or install Ace with <code>mdbindery install-tools</code>.</td>
+              </tr>
+              <tr data-severity="error">
+                <td><code>MB902</code></td>
+                <td><span class="badge badge-error">error</span></td>
+                <td>Trial build (<code>--build</code>): per-file word count differed by more than <code>2%</code> and <code>25 words</code>.</td>
+                <td>Inspect dropped raw HTML or unclosed blocks that caused text loss in the reported file.</td>
+              </tr>
+              <tr data-severity="error">
+                <td><code>MB903</code></td>
+                <td><span class="badge badge-error">error</span></td>
+                <td>Pandoc analysis or trial build stopped with an error or timed out.</td>
+                <td>Check the error message or raise timeouts with <code>MDBINDERY_TIMEOUT_SCALE</code>.</td>
+              </tr>
+              <tr data-severity="error">
+                <td><code>MB904</code></td>
+                <td><span class="badge badge-error">error</span></td>
+                <td>A trial-build validation gate failed.</td>
+                <td>Resolve all reported gate errors and rerun <code>mdbindery check --build</code>.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         Configuration Section (mdbindery.yaml)
+         ==================================================================== -->
+    <section id="config" class="section" aria-labelledby="config-heading">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-eyebrow">Configuration</span>
+          <h2 id="config-heading" class="section-title">Configure your book with <code>mdbindery.yaml</code></h2>
+          <p class="section-desc">
+            Every key in <code>mdbindery.yaml</code> is optional. Run <code>mdbindery init</code> to generate a starter configuration from your repository, or keep your book repository untouched by placing <code>mdbindery.yaml</code> in a separate folder with <code>source_dir</code>.
+          </p>
+        </div>
+
+        <div class="split-grid">
+          <div class="code-window" aria-label="Example mdbindery.yaml configuration">
+            <div class="code-window-bar">
+              <span>mdbindery.yaml (from examples/sample-book)</span>
+              <span>YAML</span>
+            </div>
+            <pre><code>slug: writing-a-book-in-markdown
+output_dir: dist
+source_url: https://github.com/sagol/mdbindery/blob/main/examples/sample-book/
+
+metadata:
+  title: Writing a Book in Markdown
+  subtitle: A small sample book for mdbindery
+  authors: [Sample Author]
+  lang: en-US
+  identifier: urn:uuid:5f0f1c2e-8a4b-4d6e-9c1a-3b7e2d9f0a11
+  date: 2026-09-26
+  rights: Text and images licensed under CC BY 4.0
+  description: A short book that demonstrates every feature of mdbindery.
+  subjects: [Markdown, EPUB, Publishing]
+
+cover:
+  image: images/cover.jpg
+
+files:
+  - file: README.md
+    role: front
+    title: About this book
+    drop_sections: [Contributing]
+  - 01-why-markdown.md
+  - 02-structure.md
+  - 03-publishing.md
+  - file: appendix-a-checklist.md
+    role: appendix
+
+options:
+  citations: refdefs
+  toc_depth: 2
+  cards:
+    files: [appendix-a-checklist.md]
+    min_columns: 9
+    title_columns: 2</code></pre>
+          </div>
+
+          <div>
+            <h3>Build the sample book</h3>
+            <p>From a checkout of the mdbindery repository, build the included sample book:</p>
+            <div class="code-block-wrap">
+              <button class="copy-btn" type="button" data-copy-target="code-quickstart">Copy</button>
+              <pre><code id="code-quickstart">mdbindery doctor
+cd examples/sample-book
+mdbindery check . --build
+mdbindery build
+mdbindery preview dist/writing-a-book-in-markdown.epub shots</code></pre>
+            </div>
+
+            <h3>Build files and provenance</h3>
+            <p>
+              Completed builds write <code>dist/&lt;slug&gt;.epub</code>, <code>dist/&lt;slug&gt;-cover.jpg</code>, <code>dist/reports/build.json</code>, and <code>dist/reports/build.log</code>, plus <code>dist/reports/epubcheck.json</code> and <code>dist/reports/ace/report.json</code> (and <code>report.html</code>) when those validators produce reports. A build that stops early may leave only failure diagnostics. <code>build.json</code> records <code>provenance</code> (<code>mdbindery</code>, <code>python</code>, <code>pandoc</code> major.minor, <code>epubcheck</code>, and <code>ace</code> versions, source Git commit, and effective options), per-stage <code>timings</code>, and gate states (<code>pass</code>, <code>warn</code>, <code>fail</code>, <code>skipped</code>).
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         Documentation Index Section
+         ==================================================================== -->
+    <section id="docs" class="section" aria-labelledby="docs-heading">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-eyebrow">Guides</span>
+          <h2 id="docs-heading" class="section-title">Documentation</h2>
+          <p class="section-desc">
+            Read the Markdown guides in the repository’s <code>docs/</code> folder.
+          </p>
+        </div>
+
+        <div class="docs-grid">
+          <a class="doc-link-card" href="https://github.com/sagol/mdbindery/blob/main/docs/tutorial.md" rel="noopener noreferrer">
+            <h3>Tutorial</h3>
+            <p>Build and check an EPUB 3 ebook from a Markdown repository, with commands and example output.</p>
+          </a>
+
+          <a class="doc-link-card" href="https://github.com/sagol/mdbindery/blob/main/docs/book-structure.md" rel="noopener noreferrer">
+            <h3>Book structure</h3>
+            <p>Files, reading order, headings, relative links, <code>[1]</code> citations, images, covers, tables, and Mermaid charts.</p>
+          </a>
+
+          <a class="doc-link-card" href="https://github.com/sagol/mdbindery/blob/main/docs/configuration.md" rel="noopener noreferrer">
+            <h3>Configuration</h3>
+            <p>Every key in <code>mdbindery.yaml</code>, default values, inference rules, and external build directories.</p>
+          </a>
+
+          <a class="doc-link-card" href="https://github.com/sagol/mdbindery/blob/main/docs/checking.md" rel="noopener noreferrer">
+            <h3>Checks and diagnostic codes</h3>
+            <p>How <code>mdbindery check</code> analyzes local folders and URLs, JSON report schema, and all 59 MB codes.</p>
+          </a>
+
+          <a class="doc-link-card" href="https://github.com/sagol/mdbindery/blob/main/docs/building.md" rel="noopener noreferrer">
+            <h3>Builds and validation gates</h3>
+            <p>The conversion pipeline, outputs, validation gates, reproducibility, covers, previewing, and store uploads.</p>
+          </a>
+
+          <a class="doc-link-card" href="https://github.com/sagol/mdbindery/blob/main/docs/installation.md" rel="noopener noreferrer">
+            <h3>Installation</h3>
+            <p>Linux, macOS, Windows, PyPI, Homebrew, GitHub Actions, offline setups, updating, and uninstalling.</p>
+          </a>
+
+          <a class="doc-link-card" href="https://github.com/sagol/mdbindery/blob/main/docs/troubleshooting.md" rel="noopener noreferrer">
+            <h3>Troubleshooting</h3>
+            <p>Diagnose and resolve common build and environment errors.</p>
+          </a>
+
+          <a class="doc-link-card" href="https://github.com/sagol/mdbindery/blob/main/docs/design.md" rel="noopener noreferrer">
+            <h3>Architecture and design</h3>
+            <p>How mdbindery works internally: preprocessing, Pandoc Lua filters (<code>book.lua</code>), CSS, and gate checks.</p>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         FAQ Section
+         ==================================================================== -->
+    <section id="faq" class="section" aria-labelledby="faq-heading">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-eyebrow">Help</span>
+          <h2 id="faq-heading" class="section-title">Frequently asked questions</h2>
+        </div>
+
+        <div class="faq-list">
+          <details class="faq-item" open>
+            <summary>What makes mdbindery different from running pandoc directly?</summary>
+            <p>
+              mdbindery uses pandoc for conversion and adds a book workflow around it. It resolves chapter links and anchors, turns numeric reference definitions into visible reference lists, renders Mermaid diagrams, and converts wide tables into row cards for configured files. It also runs configured validation gates and records their results.
+            </p>
+          </details>
+
+          <details class="faq-item">
+            <summary>Does mdbindery support existing mdBook repositories?</summary>
+            <p>
+              Yes. When a folder contains <code>book.toml</code> and <code>SUMMARY.md</code>, mdbindery automatically reads the title, authors, description, and language from <code>book.toml</code>, takes the chapter reading order from <code>SUMMARY.md</code>, expands <code>{{#include}}</code> directives (with cycle and size limits), and strips hidden lines in Rust code blocks.
+            </p>
+          </details>
+
+          <details class="faq-item">
+            <summary>How can coding agents use mdbindery?</summary>
+            <p>
+              Point Claude Code, Codex, Cursor, or Antigravity at <a href="llms-full.txt"><code>llms-full.txt</code></a> and the two official skills in <code>skills/mdbindery/SKILL.md</code> and <code>skills/mdbindery-prepare-repo/SKILL.md</code>. The agent can run <code>mdbindery check . --json check.json</code>, fix reported findings by file and line number, and verify the final ebook with <code>mdbindery build</code> and <code>mdbindery preview dist/&lt;slug&gt;.epub shots</code>.
+            </p>
+          </details>
+
+          <details class="faq-item">
+            <summary>What do I need to install mdbindery?</summary>
+            <p>
+              The installers need no preinstalled Python, Java, or Node.js and no administrator rights. Linux and macOS need Bash, curl, tar, and standard checksum utilities; Windows needs PowerShell. Tools stay in your user directory. Local builds work offline once installation is complete.
+            </p>
+          </details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <div class="container footer-inner">
+      <div>
+        <strong>mdbindery v0.1.1</strong> · Created by Taras Baranyuk · Released under the <a href="https://github.com/sagol/mdbindery/blob/main/LICENSE" rel="noopener noreferrer">MIT License</a>.<br>
+        Orchestrates <a href="https://pandoc.org" rel="noopener noreferrer">pandoc</a>, <a href="https://www.w3.org/publishing/epubcheck/" rel="noopener noreferrer">EPUBCheck</a>, <a href="https://daisy.github.io/ace/" rel="noopener noreferrer">DAISY Ace</a>, <a href="https://github.com/mermaid-js/mermaid-cli" rel="noopener noreferrer">mermaid-cli</a>, <a href="https://adoptium.net" rel="noopener noreferrer">Eclipse Temurin</a>, and <a href="https://github.com/astral-sh/uv" rel="noopener noreferrer">uv</a>.
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/sagol/mdbindery" rel="noopener noreferrer">GitHub</a>
+        <a href="https://pypi.org/project/mdbindery/" rel="noopener noreferrer">PyPI</a>
+        <a href="https://github.com/sagol/mdbindery/releases" rel="noopener noreferrer">Releases</a>
+        <a href="llms.txt">llms.txt</a>
+        <a href="llms-full.txt">llms-full.txt</a>
+        <a href="agents.json">agents.json</a>
+        <a href="sitemap.xml">sitemap.xml</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js" defer></script>
+</body>
+</html>

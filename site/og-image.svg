@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" role="img" aria-label="mdbindery: Markdown chapters to EPUB 3">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#111110"/>
+      <stop offset="100%" stop-color="#1b1b18"/>
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#262622" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#grid)" opacity="0.55"/>
+  <rect x="64" y="56" width="1072" height="518" rx="20" fill="#161614" stroke="#2e2e29" stroke-width="2"/>
+  <rect x="64" y="56" width="12" height="518" rx="6" fill="#d97757"/>
+
+  <!-- Brand badge -->
+  <g transform="translate(116, 108)">
+    <rect width="56" height="56" rx="12" fill="#1e1e1c" stroke="#d97757" stroke-width="2.5"/>
+    <path d="M16 11v34" stroke="#d97757" stroke-width="2.5"/>
+    <path d="M22 20v12h3.2v-6.8l3.3 4.5 3.3-4.5V32H35V20h-3.2l-3.3 4.6-3.3-4.6H22z" fill="#faf9f5"/>
+    <path d="M39 20v7.5h-2.5L40.5 32l4-4.5H42V20h-3z" fill="#d97757"/>
+    <text x="76" y="38" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="34" font-weight="700" fill="#faf9f5">mdbindery</text>
+    <rect x="285" y="12" width="86" height="32" rx="16" fill="#27211d" stroke="#d97757" stroke-width="1.5"/>
+    <text x="328" y="33" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16" font-weight="600" fill="#d97757">v0.1.1</text>
+  </g>
+
+  <!-- Headline -->
+  <text x="116" y="246" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif" font-size="54" font-weight="800" fill="#faf9f5" letter-spacing="-1">Markdown chapters to</text>
+  <text x="116" y="312" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif" font-size="54" font-weight="800" fill="#d97757" letter-spacing="-1">EPUB 3 ebooks.</text>
+
+  <!-- Subheadline -->
+  <text x="116" y="368" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif" font-size="24" fill="#b8b5ad">Convert Markdown chapters. Run EPUBCheck and DAISY Ace.</text>
+  <text x="116" y="402" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif" font-size="24" fill="#b8b5ad">Review validation reports before publishing.</text>
+
+  <!-- Terminal snippet -->
+  <g transform="translate(116, 438)">
+    <rect width="968" height="92" rx="12" fill="#0d0d0c" stroke="#33332d" stroke-width="1.5"/>
+    <text x="28" y="38" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="20" fill="#8e8b82">$</text>
+    <text x="52" y="38" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="20" fill="#faf9f5">mdbindery check https://github.com/OWNER/REPO</text>
+    <text x="28" y="70" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="20" fill="#8e8b82">$</text>
+    <text x="52" y="70" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="20" fill="#faf9f5">mdbindery build path/to/your-book</text>
+    <text x="560" y="70" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="20" fill="#5fb376"># Review build reports</text>
+  </g>
+</svg>

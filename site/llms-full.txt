@@ -1,0 +1,322 @@
+# mdbindery: technical reference for LLMs and coding agents
+
+- Package: `mdbindery`
+- Version: `0.1.1`
+- License: MIT
+- Author: Taras Baranyuk
+- Repository: https://github.com/sagol/mdbindery
+- Homepage: https://sagol.github.io/mdbindery/
+- PyPI: https://pypi.org/project/mdbindery/
+- Python requirement: `>=3.9` (`PyYAML>=6.0`, `Pillow>=9.0`)
+
+---
+
+## 1. Purpose and capabilities
+
+`mdbindery` converts a local folder or GitHub repository of Markdown chapters (or an `mdBook` project with `book.toml` and `SUMMARY.md`) into an EPUB 3 ebook and runs configured validation gates (`links`, `images`, `charts`, `includes`, `epubcheck`, `ace`, `wordcount`).
+
+Conversions:
+
+1. **Cross-file links & GitHub anchors**: Relative links (`02-chapter.md`, `02-chapter.md#section-slug`, `.html` links to `.md` chapters, and custom `<a id="...">` anchors) become internal EPUB spine/fragment links. Links to existing repository files outside the book rewrite to `source_url` or plain text.
+2. **Numeric citations**: Reference definitions with numeric labels (`[1]: https://example.com "Title"`) become a visible numbered reference list under the chapter's reference heading, and inline `[1]` markers link to them.
+3. **Images & covers**: Images become inline icons (when inside a paragraph with text), block images, captioned `<figure>` elements (when given a title `![alt](img.png "Caption")`), or dedicated full-page images (`"full-page"` title). Generates a `1600x2560` typographic cover from `metadata.title`, `metadata.subtitle`, and `metadata.authors` when no cover image is supplied.
+4. **Mermaid diagrams**: Fenced ```` ```mermaid ```` blocks render to PNG images via `mermaid-cli` with alt text extracted from the diagram (or become placeholders when `mermaid-cli` is unavailable or `options.mermaid: placeholder`).
+5. **Wide tables to phone cards**: For chapter files listed in `options.cards.files`, tables with at least `options.cards.min_columns` columns (default `9`) transform into vertical per-row card blocks using `options.cards.title_columns` (default `1`) header columns.
+6. **Math, footnotes, alerts, HTML**: TeX math converts to native MathML; footnotes become numbered endnotes; GitHub alerts (`> [!NOTE]`, `> [!WARNING]`), task lists, monochrome syntax highlighting, and supported raw GitHub README HTML (`<br>`, `<sup>`, `<sub>`, `<details>`, `<img>`, `<p align>`) convert to valid EPUB 3 XHTML.
+7. **Reproducible builds**: Building the same commit twice with the same tools, fonts, and a saved `metadata.identifier` produces byte-identical `.epub` files. Without an `identifier:` line in `mdbindery.yaml`, each build generates a new random `urn:uuid` and outputs differ. Generated covers depend on available system fonts.
+
+---
+
+## 2. Installation and companion tools
+
+### Standalone installers (no preinstalled Python, Java, or Node.js)
+
+The installers need no preinstalled Python, Java, or Node.js and no administrator rights. Linux and macOS need Bash, curl, tar, and standard checksum utilities; Windows needs PowerShell.
+
+Downloaded uv, pandoc, EPUBCheck, and Node.js binaries are checked against pinned SHA-256 checksums. Java uses a suitable installed runtime or the latest Temurin 21 build, verified with the checksum returned by its API. Mermaid-cli and Ace have pinned top-level npm versions; their dependencies resolve during installation.
+
+```bash
+# Linux & macOS
+curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/main/install/install.sh | bash
+
+# Pin release tag
+curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/v0.1.1/install/install.sh | bash -s -- --ref v0.1.1
+
+# Windows PowerShell
+irm https://raw.githubusercontent.com/sagol/mdbindery/main/install/install.ps1 | iex
+```
+
+Installer flags (`install.sh` / `install.ps1`):
+
+- `--no-node` / `-NoNode`: Skip Node.js, `mermaid-cli`, and `Ace` (~370 MB total instead of ~1.5 GB). Charts become placeholders (`charts` gate warns); `ace` gate warns without running; `preview` is unavailable.
+- `--java auto|always|never` / `-Java`: Control Eclipse Temurin JRE download.
+- `--no-tools` / `-NoTools`: Install `mdbindery` CLI only.
+- `--local PATH` / `-Local`: Install from local checkout.
+- `--ref REF` / `-Ref`: Install specific git tag, branch, or commit.
+- `--uninstall` / `-Uninstall`: Remove `mdbindery` and managed tools.
+
+### Package managers and CI
+```bash
+# uv
+uv tool install mdbindery && mdbindery install-tools
+
+# pipx
+pipx install mdbindery && mdbindery install-tools
+
+# Homebrew (macOS / Linux)
+brew install sagol/tap/mdbindery && mdbindery install-tools
+```
+
+GitHub Actions workflow:
+```yaml
+- uses: sagol/mdbindery@v0.1.1
+- run: mdbindery build path/to/book
+```
+
+Environment variables:
+
+- `MDBINDERY_HOME`: Override managed tool directory (default `~/.local/share/mdbindery` on Linux, `~/Library/Application Support/mdbindery` on macOS, `%LOCALAPPDATA%\mdbindery` on Windows).
+- `MDBINDERY_BIN`: Override CLI binary location (default `~/.local/bin`).
+- `MDBINDERY_TIMEOUT_SCALE`: Float multiplier for external subprocess timeouts.
+
+---
+
+## 3. CLI reference and exit codes
+
+### `mdbindery doctor`
+
+Prints `mdbindery` version, tool home path, and status of `pandoc` (>=3.8 required), `epubcheck` (v5.4.0), `java` (>=11), `node`, `mermaid` (`renders PNG`), `ace` (1.4.6), and `python`.
+
+- Exit `0`: `pandoc` and `epubcheck` present (missing Node tools emit notes only).
+- Exit `1`: `pandoc` or `epubcheck` missing/broken.
+
+### `mdbindery init [path] [--force]`
+
+Infers reading order, title, language, license, cover, `source_url`, and `mdBook` settings from `path` (default `.`) and writes `<path>/mdbindery.yaml`. With `--force`, rewrites an existing `mdbindery.yaml` (keeping existing metadata, identifier, and options, and saving a `.bak` copy).
+
+- Exit `0`: File written.
+- Exit `1`: `mdbindery.yaml` already exists (without `--force`) or no Markdown chapters found (`MB100`).
+- Exit `2`: Folder not found or existing config invalid (without `--force`).
+
+### `mdbindery check [target] [-c FILE] [--ref REF] [--build] [--no-render] [--report FILE] [--json FILE] [-q]`
+
+Dry-run inspection on local directory or remote repository URL (`https://github.com/OWNER/REPO`, `https://github.com/OWNER/REPO/tree/BRANCH/FOLDER`, `git@github.com:OWNER/REPO.git`, or any git URL). Leaves book source files unchanged; temporary files and requested reports are written.
+
+- `-c FILE`, `--config FILE`: Use custom config file.
+- `--ref REF`: Branch or tag for remote URL.
+- `--build`: Run a trial build in a temporary directory (`mdbindery-trial-*`) if static checks found 0 errors.
+- `--no-render`: Skip Mermaid PNG test-rendering during check.
+- `--report FILE`: Write Markdown report to `FILE`.
+- `--json FILE`: Write structured JSON report (`ok`, `counts`, `by_code`, `facts`, `findings`) to `FILE`.
+- `-q`, `--quiet`: Suppress progress output (and stdout report when `--report` or `--json` is given).
+- Exit `0`: Zero errors (`counts.error == 0`). Warnings and info notes allowed.
+- Exit `1`: One or more errors (`MB100`, `MB102`, or any `error` finding / trial build failure).
+- Exit `2`: Target unreadable or report file unwritable.
+- Exit `3`: Internal error.
+
+### `mdbindery build [path] [-c CONFIG] [-o OUT] [--no-ace] [--keep-work] [-q]`
+
+Completed builds write `dist/<slug>.epub`, `dist/<slug>-cover.jpg`, `dist/reports/build.json`, and `dist/reports/build.log` under the default output directory. EPUBCheck and DAISY Ace reports appear at `dist/reports/epubcheck.json`, `dist/reports/ace/report.json`, and `dist/reports/ace/report.html` when those validators produce reports. Early failures may leave only failure diagnostics. If `metadata.identifier` is empty and `mdbindery.yaml` has an `identifier:` line, the first build generates a `urn:uuid` and saves it there (`identifier` can also be any user-supplied permanent ID).
+
+- `build.json` records `gates` (`pass`, `warn`, `fail`, `skipped`), `failed_gates`, `skipped_gates`, `warning_gates`, `files`, `links`, `pandoc_warnings`, `timings`, and `provenance` (`mdbindery`, `python`, `pandoc` major.minor, `epubcheck`, `ace`, `source_revision`, and `options`).
+- Exit `0`: `BUILD OK` — EPUB written and no gate failed (`warn` or `skipped` gates do not fail the build).
+- Exit `1`: `BUILD FAILED` — EPUB written, but at least one gate failed.
+- Exit `2`: Configuration error (`config error: ...`) or pre-build error (`build error: ...`).
+- Exit `3`: Internal error.
+
+### `mdbindery preview <epub> <out> [page ...] [--width 412] [--height 915] [--full]`
+
+Renders screenshots of pages inside `<epub>` to folder `<out>` using headless Chrome. Both `<epub>` and `<out>` are required positional arguments.
+
+- `page`: Optional paths inside the EPUB (e.g. `text/ch002.xhtml` or `text/ch002.xhtml#some-id`). Without `page` arguments, captures cover, title page, table of contents (`nav.xhtml`), and first two chapters.
+- `--width`: Viewport width in CSS pixels (`200`–`4000`, default `412`).
+- `--height`: Viewport height in CSS pixels (`200`–`8000`, default `915`). Screenshots use device scale factor `2` (`824x1830` px by default).
+- `--full`: Capture full page height instead of one viewport screen.
+- Security handling: scripts inside the EPUB are disabled, pages load only assets from the EPUB itself (and `data:` URLs), and archives exceeding 50,000 files or 2 GB unpacked are refused. Chrome runs with its OS sandbox where supported, falling back with a warning if the environment cannot start the sandbox.
+- Exit `0`: Screenshots written.
+- Exit `2`: Bad arguments, missing Node/Puppeteer (`--no-node`), or invalid EPUB.
+- Exit `3`: Internal error.
+
+### `mdbindery install-tools [--no-node] [--java auto|always|never] [--force]`
+
+Installs companion tools using the version and verification policy in section 2. Java may use an existing compatible runtime; npm dependencies are resolved at install time.
+
+- Exit `0`: `pandoc` and `epubcheck` installed.
+- Exit `1`: `pandoc` or `epubcheck` still missing after run.
+- Exit `2`: Installer failure.
+
+---
+
+## 4. Build validation gates
+
+Builds that reach validation record these gate states (`pass`, `warn`, `fail`, or `skipped`) in `reports/build.json`. A trial build from `mdbindery check --build` uses a temporary directory. Early failures can stop the build before validation:
+
+1. **`links`**: Fails when an internal link target (chapter file or `#anchor`) is missing and `options.strict_links` is `true` (default). Warns when `options.strict_links` is `false`. Never skipped.
+2. **`images`**: Fails when an image is missing, remote (`http://`, `https://`), has an empty path, or (during the trial build of an untrusted repository checked by URL) lies outside the repository checkout. Ordinary local builds allow readable files outside the book folder. Never skipped.
+3. **`charts`**: Fails when a ```` ```mermaid ```` block fails to render. Warns (replacing charts with placeholders) when the book has charts, `options.mermaid` is `png`, and `mermaid-cli` is not installed. Never skipped.
+4. **`includes`**: Appears in `build.json` and fails only when an `mdBook` directive (`{{#include}}`, `{{#rustdoc_include}}`, `{{#playground}}`) could not be expanded (missing file, path outside repository, missing anchor, include cycle, nesting >10 levels, >5000 includes, or >20 MB included text per file).
+5. **`epubcheck`**: Fails when `EPUBCheck v5.4.0` reports an `ERROR` or `FATAL` message, cannot run (missing Java 11+ or EPUBCheck), or crashes without producing `reports/epubcheck.json`. Skipped when `options.epubcheck: false`.
+6. **`ace`**: Fails when `DAISY Ace` reports a `critical` or `serious` violation whose rule is not listed in `options.ace_waivers`, or when Ace is installed but produces no `reports/ace/report.json`. Warns when Ace is not installed. Skipped with `--no-ace` or `options.ace: false`.
+7. **`wordcount`**: Fails when any chapter file's EPUB word count differs from its prepared Markdown source by more than `options.wordcount_tolerance` (default `0.02`, 2%) AND more than `options.wordcount_min_words` (default `25` words), after adjusting for repeated column labels in card tables. Never skipped.
+
+---
+
+## 5. Configuration schema (`mdbindery.yaml`)
+
+All keys are optional and match `mdbindery.config.DEFAULTS` and `FILE_KEYS`:
+
+```yaml
+slug: writing-a-book-in-markdown
+source_dir: .
+output_dir: dist
+source_url: https://github.com/sagol/mdbindery/blob/main/examples/sample-book/
+
+metadata:
+  title: Writing a Book in Markdown
+  subtitle: A small sample book for mdbindery
+  authors:
+    - Sample Author
+  lang: en-US
+  identifier: urn:uuid:5f0f1c2e-8a4b-4d6e-9c1a-3b7e2d9f0a11
+  date: git
+  rights: Text and images licensed under CC BY 4.0
+  publisher: ""
+  description: A short book that demonstrates every feature of mdbindery.
+  subjects:
+    - Markdown
+    - EPUB
+    - Publishing
+  series: ""
+  series_position: ""
+
+cover:
+  image: images/cover.jpg
+  embed_height: 1000
+  background: "#1d2330"
+  foreground: "#f2efe6"
+  accent: "#c8643b"
+
+files:
+  - file: README.md
+    role: front
+    title: About this book
+    drop_sections:
+      - Contributing
+  - 01-why-markdown.md
+  - 02-structure.md
+  - 03-publishing.md
+  - file: appendix-a-checklist.md
+    role: appendix
+    mermaid_alt: []
+    key: k04
+
+options:
+  citations: refdefs
+  citation_labels: numeric
+  reference_headings:
+    - References
+    - Sources
+    - Notes
+    - Bibliography
+    - Works cited
+  reference_heading_new: References
+  drop_lines: []
+  toc: true
+  toc_depth: 2
+  split_level: 1
+  mermaid: png
+  mermaid_scale: 2
+  mermaid_alt_prefix: Chart
+  mermaid_today_marker: false
+  mermaid_theme: neutral
+  mermaid_font_size: 18
+  cards:
+    files:
+      - appendix-a-checklist.md
+    min_columns: 9
+    title_columns: 2
+  wide_table_warn: 9
+  css: ""
+  extra_css: ""
+  embed_fonts: []
+  highlight_style: monochrome
+  strict_links: true
+  wordcount_tolerance: 0.02
+  wordcount_min_words: 25
+  epubcheck: true
+  ace: true
+  ace_waivers: []
+  accessibility_summary: ""
+  conformance_claim: ""
+```
+
+Notes on `files` entries (`FILE_KEYS = {'file', 'role', 'title', 'drop_sections', 'mermaid_alt', 'key'}`):
+
+- `role` (`front`, `chapter`, `appendix`, `back`) is informational (`starter_yaml` records inferred roles; reading order is determined by the list order in `files:`).
+- Wide-table card conversion is configured under `options.cards.files`, `options.cards.min_columns` (default `9`), and `options.cards.title_columns` (default `1`), not on individual `files:` entries.
+
+---
+
+## 6. Diagnostic codes (`MB001`–`MB904`)
+
+| Code | Severity | Condition & Fix |
+|---|---|---|
+| `MB001` | warning | `pandoc` (<3.8 or missing): internal links/HTML/charts not verified. Run `mdbindery install-tools`. |
+| `MB100` | error | Empty reading order: no Markdown chapters found. Add `.md` files or set `files:` in `mdbindery.yaml`. |
+| `MB101` | info | No `mdbindery.yaml` found; using inferred configuration. Run `mdbindery init`. |
+| `MB102` | error/warning | Invalid `mdbindery.yaml` syntax, wrong value type, path outside repo, or unknown key. Fix config per `docs/configuration.md`. |
+| `MB103` | error | File listed in `files:` does not exist. Fix path in `mdbindery.yaml`. |
+| `MB104` | info | Markdown file in repository is not included in reading order. Add to `files:` or leave excluded. |
+| `MB105` | error/info | Error: file is not valid UTF-8. Info: file has UTF-8 BOM or CRLF line endings. Re-save as UTF-8 LF. |
+| `MB106` | warning | File has no `#` level-1 heading. Add `# Chapter Title` at top or set `title:` on the `files:` entry. |
+| `MB107` | warning/info | Warning: single file has multiple `#` level-1 headings (demote extras to `##`). Info: multiple files share identical `#` title. |
+| `MB108` | warning | Skipped heading level (e.g. `#` directly to `###`). Use sequential heading levels to avoid skipped-heading accessibility findings. |
+| `MB109` | warning | Chapter file is empty (or empty after `drop_sections`/`drop_lines`). Remove from `files:` or add content. |
+| `MB110` | warning | Content appears before first `#` heading. Move badges/text below `#` heading or strip via `options.drop_lines`. |
+| `MB111` | warning | File starts with YAML front matter (dropped by pandoc). Copy needed metadata to `mdbindery.yaml`. |
+| `MB120` | info | `metadata.title` was inferred. Set `metadata.title` explicitly in `mdbindery.yaml`. |
+| `MB121` | warning | No author specified. Set `metadata.authors: ["First Last"]` in `mdbindery.yaml`. |
+| `MB122` | info | `metadata.lang` was inferred (`en-US`). Set `metadata.lang` in `mdbindery.yaml`. |
+| `MB123` | warning | No `metadata.rights` or `LICENSE` file found. Set `metadata.rights` or add `LICENSE`. |
+| `MB124` | info | `metadata.identifier` is empty; first build will generate and save a `urn:uuid` if `identifier:` is present in `mdbindery.yaml`. |
+| `MB125` | info | Reading order was inferred (from `SUMMARY.md`, `README.md` links, or filenames). Set `files:` to lock order. |
+| `MB126` | warning | Table-of-contents file (`SUMMARY.md`, `toc.md`) included in `files:`. Remove it; EPUB generates its own TOC. |
+| `MB130` | info | `mdBook` layout detected (`book.toml` + `SUMMARY.md`). |
+| `MB131` | error | `mdBook` `{{#include}}` directive failed (missing target, cycle, bad line range, or size limit). |
+| `MB200` | error | Link points to missing `#anchor` in target file. Fix slug or add `<a id="slug"></a>`. |
+| `MB201` | warning | Link anchor matched only approximately (ignoring punctuation). Update fragment to exact GitHub slug. |
+| `MB202` | warning/info | Link points to existing repo file outside book reading order. Set `source_url` or add file to `files:`. |
+| `MB203` | warning | Relative link points to website path not in repo. Use full `https://` URL or set `source_url`. |
+| `MB204` | error | Link points to missing local file. Fix path or remove broken link. |
+| `MB205` | info | `.html` or directory link automatically resolved to matching `.md` chapter. |
+| `MB300` | warning | Numeric reference definition `[n]: url` is never cited in file. Cite `[n]` or remove definition. |
+| `MB301` | error | Reference label `[n]` defined twice with different URLs in same file. Renumber duplicates. |
+| `MB302` | warning | Citation `[n]` in text has no `[n]: url` definition in that file. Add definition at bottom of file. |
+| `MB303` | info | File uses `[n]` citations without a `## References` heading; `mdbindery` adds one automatically. |
+| `MB304` | error | Footnote marker `[^id]` has no `[^id]: text` definition. Add definition or escape `\[`. |
+| `MB305` | warning | Footnote definition `[^id]:` is never referenced. Reference it or remove definition. |
+| `MB306` | info | Citation definition `[n]: url` has no `"Title"`; bare URL will be displayed. Add `"Title"` in quotes. |
+| `MB400` | error | Image file not found or empty path. Fix relative path to image inside repository. |
+| `MB401` | error/info | Error: remote `http(s)://` image URL (EPUB requires embedded local assets). Info: same-repo GitHub URL resolved locally. |
+| `MB402` | warning | Image missing alt text (`![](path)` or `<img>` without `alt`). Add descriptive alt text for accessibility. |
+| `MB403` | error/warning | Unsupported or non-standard image format (e.g. `.bmp`, `.tiff`, `.ico`, `.avif`). Convert to PNG, JPEG, SVG, GIF, or WebP. |
+| `MB404` | warning | Image exceeds 3200 px on long side or 5 MB. Scale down to at most 3200 px and compress (e.g. `magick big.jpg -resize '3200x3200>' -quality 85 big.jpg`). |
+| `MB405` | warning/info | Warning: SVG contains `<script>` or `<foreignObject>`. Info: animated GIF/PNG/WebP (shows first frame on e-readers). |
+| `MB406` | error/warning | Error (URL check): image path leaves repository checkout. Warning (local check): image lies outside book source folder. Move image into `images/`. |
+| `MB407` | warning | Symlink pointing outside repository checkout was removed during URL check. Replace symlink with real file in repo. |
+| `MB410` | info | No cover image configured; typographic cover (`1600x2560`) will be generated automatically. |
+| `MB411` | warning | Cover short side is below 1400 px, height:width ratio is outside 1.4–1.7 (ideal 1.6:1), or mode is CMYK. Use a `1600x2560` RGB image. |
+| `MB412` | error/warning | Error: configured cover image missing or unreadable. Warning: cover format converted to JPEG. |
+| `MB500` | error/warning | Unsupported raw HTML tag (`<script>`, `<iframe>`, `<form>`, `<video>`, `<style>`, etc.) removed during conversion. |
+| `MB501` | info | Raw HTML block/inline converted or stripped; verify chapter word count and appearance. |
+| `MB600` | warning | Pipe table has `options.wide_table_warn` (default 9) or more columns and its file is not in `options.cards.files`. List the file under `options.cards.files` or split the table. |
+| `MB700` | warning | Book contains Mermaid charts, `options.mermaid` is `png`, and `mermaid-cli` is not installed. Run `mdbindery install-tools`. |
+| `MB701` | error | Mermaid chart failed to render (syntax error). Fix Mermaid diagram syntax. |
+| `MB710` | info | Book contains TeX math expressions (rendered to MathML in EPUB 3). |
+| `MB711` | warning | Unescaped `$` signs interpreted as TeX math or failed TeX math parsing. Escape literal currency as `\$`. |
+| `MB720` | info | Code block contains lines longer than 90 characters (may wrap on narrow e-reader screens). |
+| `MB900` | error/warning | Trial build `EPUBCheck` message (`ERROR`/`FATAL` = error; `WARNING` = warning). |
+| `MB901` | error/warning/info | Trial build `DAISY Ace` accessibility violation (`critical`/`serious` = error; missing Ace = warning; waived rule = info). |
+| `MB902` | error | Trial build `wordcount` gate failed: chapter differed by >2% (`wordcount_tolerance`) and >25 words (`wordcount_min_words`). |
+| `MB903` | error | Pandoc analysis or trial build stopped with an error or timed out. |
+| `MB904` | error | Trial build gate failed (`links`, `images`, `charts`, `includes`, `epubcheck`, `ace`, or `wordcount`). |
