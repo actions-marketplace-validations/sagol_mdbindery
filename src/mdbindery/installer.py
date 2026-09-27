@@ -139,13 +139,20 @@ def _swap_in(staged, target, check=None):
     shutil.rmtree(old, ignore_errors=True)
 
 
-def _place(found_binary, target, version, check=None, bin_style=True):
-    """Install the folder holding a binary (or its parent if it sits in bin/) as target, transactionally."""
+def _place(found_binary, target, version, smoke=None, check=None, bin_style=True):
+    """Install the folder holding a binary (or its parent if it sits in bin/) as target, transactionally.
+
+    smoke: arguments the installed binary must start with (for example ('--version',)) before the switch
+    is final; its path inside target is taken from where it was found, whatever the archive's layout.
+    """
     p = Path(found_binary)
     root = p.parent.parent if (bin_style and p.parent.name == 'bin') else p.parent
+    rel = p.relative_to(root)
     staged = _staging(target)
     shutil.move(str(root), str(staged))
     _marker(staged, version)  # the marker always describes the folder it sits in
+    if smoke is not None:
+        check = _runs(rel, *smoke)
     _swap_in(staged, target, check)
 
 
@@ -192,7 +199,7 @@ def install_pandoc(tmp, force=False):
     else:
         exe = next(p for p in ex.rglob('pandoc') if p.is_file() and p.parent.name == 'bin')
     _make_executable(exe)
-    _place(exe, target, PANDOC_VERSION, _runs(Path('bin') / tools._exe('pandoc'), '--version'))
+    _place(exe, target, PANDOC_VERSION, smoke=('--version',))
 
 
 def install_epubcheck(tmp, force=False):
@@ -240,8 +247,7 @@ def install_jre(tmp, mode='auto', force=False):
     extract(arc, ex)
     exe = next(p for p in ex.rglob('java.exe' if tools.IS_WIN else 'java') if p.is_file() and p.parent.name == 'bin')
     _make_executable(exe)
-    rel = exe.relative_to(exe.parent.parent)
-    _place(exe, target, str(JRE_MAJOR), _runs(rel, '-version'))
+    _place(exe, target, str(JRE_MAJOR), smoke=('-version',))
 
 
 def install_node(tmp, force=False):
@@ -262,8 +268,7 @@ def install_node(tmp, force=False):
         exe = next(p for p in ex.rglob('node.exe') if p.is_file())
     else:
         exe = next(p for p in ex.rglob('node') if p.is_file() and p.parent.name == 'bin')
-    rel = Path('node.exe') if tools.IS_WIN else Path('bin') / 'node'
-    _place(exe, target, NODE_VERSION, _runs(rel, '--version'), bin_style=not tools.IS_WIN)
+    _place(exe, target, NODE_VERSION, smoke=('--version',), bin_style=not tools.IS_WIN)
     tools.clear_cache()
 
 

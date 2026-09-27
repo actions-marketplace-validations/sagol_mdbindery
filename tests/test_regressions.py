@@ -492,7 +492,7 @@ def test_run_process_stops_the_whole_tree_on_timeout(tmp_path):
             pytest.fail('grandchild process still running')
 
 
-def test_failed_tool_update_keeps_the_working_version(tmp_path):
+def test_failed_tool_update_keeps_the_working_version(tmp_path, monkeypatch):
     from mdbindery import installer
     target = tmp_path / 'tools' / 'pandoc'
     (target / 'bin').mkdir(parents=True)
@@ -513,6 +513,14 @@ def test_failed_tool_update_keeps_the_working_version(tmp_path):
     installer._place(new / 'pandoc', target, '2.0', check=lambda folder: None)
     assert (target / 'bin' / 'pandoc').read_text() == 'new' and installer._installed(target, '2.0')
     assert sorted(p.name for p in target.parent.iterdir()) == ['pandoc']
+    # the smoke test runs the binary where it landed, also when the archive has no bin/ (pandoc on Windows)
+    flat = tmp_path / 'dl' / 'pandoc-3.0'
+    flat.mkdir(parents=True)
+    (flat / 'pandoc.exe').write_text('flat')
+    started = []
+    monkeypatch.setattr(installer, '_runs', lambda rel, *args: lambda folder: started.append((folder / rel, args)))
+    installer._place(flat / 'pandoc.exe', target, '3.0', smoke=('--version',))
+    assert started == [(target / 'pandoc.exe', ('--version',))] and (target / 'pandoc.exe').is_file()
 
 
 def test_one_tool_install_at_a_time(tmp_path, monkeypatch):
