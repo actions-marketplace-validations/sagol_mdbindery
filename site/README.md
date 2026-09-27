@@ -6,7 +6,7 @@ Static landing page and technical reference for `mdbindery` (`v0.1.1`). Includes
 
 - `index.html` — Semantic HTML5 landing page, JSON-LD (`SoftwareApplication`, `HowTo`, `FAQPage`, `WebSite`), Open Graph / Twitter Card metadata, Content-Security-Policy, progressive-enhancement install tabs (all panels readable without JS), 7 validation gates overview, AI agent skill links, and live filter for all 59 `MB001`–`MB904` check codes.
 - `styles.css` — Responsive dark/light theme stylesheet with primary controls above the 4.5:1 text-contrast threshold, `prefers-reduced-motion`, and sticky-header anchor offsets. Zero external font or CDN requests.
-- `app.js` — CSP-compliant (`script-src 'self'`) script for theme toggle, WAI-ARIA tabs, clipboard copy buttons with selection fallback and `aria-live` announcements, and check-code filtering.
+- `app.js` — Local script allowed by the CSP for theme toggle, WAI-ARIA tabs, clipboard copy buttons with selection fallback and `aria-live` announcements, and check-code filtering.
 - `llms.txt` — Concise `llmstxt.org` index for AI agents and LLMs.
 - `llms-full.txt` — Single-file reference containing CLI commands, flags, exit codes, `mdbindery.yaml` schema (`config.DEFAULTS` & `FILE_KEYS`), 7 validation gates, and all 59 `MB` check codes.
 - `agents.json` & `.well-known/agent.json` — Project-specific JSON capability manifest and discovery pointer.
@@ -70,3 +70,7 @@ Before release, inspect 320, 390, 768, and 1280 px layouts in both themes. Check
 3. In GitHub repository **Settings -> Pages -> Build and deployment**:
    - **Source**: `Deploy from a branch`
    - **Branch**: `gh-pages` / `/ (root)`
+
+## Analytics
+
+The page loads Google Analytics with measurement ID `G-GBGKWE1SCM`. The CSP allows the Google tag and Analytics endpoints using [Google’s configuration for Analytics without Ads features](https://developers.google.com/tag-platform/security/guides/csp#google_analytics). The inline initialization script is allowed by its SHA-256 hash; update that hash whenever the script content or whitespace changes.
