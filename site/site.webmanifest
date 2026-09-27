@@ -1,0 +1,22 @@
+{
+  "name": "mdbindery: Markdown chapters to EPUB 3",
+  "short_name": "mdbindery",
+  "description": "Build EPUB 3 ebooks from Markdown chapters or mdBook projects, run configured validation checks, and review the results.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#111110",
+  "theme_color": "#d97757",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png"
+    }
+  ]
+}

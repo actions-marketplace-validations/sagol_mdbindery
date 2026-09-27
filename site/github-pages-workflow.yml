@@ -1,0 +1,77 @@
+# Optional GitHub Actions workflow template to validate and deploy site/ to GitHub Pages.
+# To enable:
+#   1. Copy this file to .github/workflows/pages.yml
+#   2. In GitHub Repository Settings -> Pages -> Build and deployment,
+#      set Source to "GitHub Actions".
+
+name: pages
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "site/**"
+      - "src/mdbindery/**"
+      - "pyproject.toml"
+      - ".github/workflows/pages.yml"
+  pull_request:
+    paths:
+      - "site/**"
+      - "src/mdbindery/**"
+      - "pyproject.toml"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "pages-${{ github.ref }}"
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Install validation dependencies
+        run: python3 -m pip install .
+
+      - name: Validate documentation and syntax
+        run: |
+          node --check site/app.js
+          bash -n site/deploy-gh-pages.sh
+          python3 site/validate.py
+
+      - name: Stage public site assets
+        run: python3 site/stage.py _site
+
+      - name: Upload Pages artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa  # v3.0.1
+        with:
+          path: "./_site"
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Configure Pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b  # v5.0.0
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e  # v4.0.5

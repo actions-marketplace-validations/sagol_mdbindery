@@ -1,0 +1,14 @@
+# robots.txt for mdbindery
+# Note: When published under a GitHub Pages project subpath (https://sagol.github.io/mdbindery/),
+# search engines and crawlers read the host root policy at https://sagol.github.io/robots.txt.
+# This file takes effect only when the site is served at a custom domain root.
+#
+# Machine-readable resources:
+#   Summary index:  https://sagol.github.io/mdbindery/llms.txt
+#   Full reference: https://sagol.github.io/mdbindery/llms-full.txt
+#   Agent manifest: https://sagol.github.io/mdbindery/agents.json
+
+User-agent: *
+Allow: /
+
+Sitemap: https://sagol.github.io/mdbindery/sitemap.xml

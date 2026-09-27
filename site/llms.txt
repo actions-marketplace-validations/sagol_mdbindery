@@ -1,0 +1,63 @@
+# mdbindery
+
+> Build EPUB 3 ebooks from Markdown chapters or mdBook projects. Supports chapter links, local images, numeric citations, Mermaid diagrams, math, and wide tables. Runs configured validation gates, including W3C EPUBCheck 5.4.0, DAISY Ace 1.4.6, and per-file word counts. Review warnings, failures, and skipped checks before publishing.
+
+- Version: `0.1.1`
+- License: MIT
+- Author: Taras Baranyuk
+- Repository: https://github.com/sagol/mdbindery
+- PyPI: https://pypi.org/project/mdbindery/
+- Site: https://sagol.github.io/mdbindery/
+- Full LLM reference: https://sagol.github.io/mdbindery/llms-full.txt
+- Agent manifest: https://sagol.github.io/mdbindery/agents.json
+
+## Quick commands
+
+Standalone installers need Bash, curl, tar, and checksum utilities on Linux/macOS, or PowerShell on Windows. No preinstalled Python, Java, or Node.js is needed.
+
+```bash
+# Install (Linux / macOS — no preinstalled Python, Java, or Node.js; no root required)
+curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/main/install/install.sh | bash
+
+# Install (Windows PowerShell)
+irm https://raw.githubusercontent.com/sagol/mdbindery/main/install/install.ps1 | iex
+
+# Install via uv / pipx / Homebrew
+uv tool install mdbindery && mdbindery install-tools
+pipx install mdbindery && mdbindery install-tools
+brew install sagol/tap/mdbindery && mdbindery install-tools
+
+# Verify toolchain (pandoc, epubcheck, java, node, mermaid, ace, python)
+mdbindery doctor
+
+# Dry-run static + pandoc check on local folder or remote GitHub URL
+mdbindery check https://github.com/OWNER/REPO
+mdbindery check . --json /tmp/mdb-check.json --report /tmp/mdb-check.md -q
+mdbindery check . --build
+
+# Generate starter mdbindery.yaml from inferred structure
+mdbindery init
+
+# Build EPUB 3 and run configured validation gates
+mdbindery build path/to/your-book
+
+# Render phone-size (412x915 CSS px, 2x scale) PNG screenshots
+mdbindery preview dist/writing-a-book-in-markdown.epub shots
+```
+
+## Coding-agent skills (Claude Code, Codex, Cursor, Antigravity, Gemini CLI)
+
+- [Run mdbindery skill (SKILL.md)](https://raw.githubusercontent.com/sagol/mdbindery/main/skills/mdbindery/SKILL.md): Install, run `doctor`, `check`, `init`, `build`, `preview`, parse JSON reports (`dist/reports/build.json`), and interpret gates and exit codes.
+- [Prepare repository skill (SKILL.md)](https://raw.githubusercontent.com/sagol/mdbindery/main/skills/mdbindery-prepare-repo/SKILL.md): Restructure Markdown repository or mdBook to resolve `MB001`–`MB904` findings while keeping GitHub rendering intact.
+
+## Documentation
+
+- [Full LLM reference (llms-full.txt)](https://sagol.github.io/mdbindery/llms-full.txt): Complete single-file reference with CLI flags, exit codes, `mdbindery.yaml` schema, all 59 MB check codes, and 7 build gates.
+- [Tutorial](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/tutorial.md): Walkthrough for building and checking an EPUB 3 ebook from Markdown.
+- [Book structure](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/book-structure.md): Headings, relative links, anchors, `[1]` citations, footnotes, images, covers, tables, Mermaid charts.
+- [Configuration reference](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/configuration.md): Every `mdbindery.yaml` key (`metadata`, `files`, `cover`, `options`).
+- [Checks and diagnostic codes](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/checking.md): `mdbindery check`, JSON report format, and every `MB001`–`MB904` diagnostic code with fix instructions.
+- [Builds and validation gates](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/building.md): Build pipeline, outputs (`dist/<slug>.epub`, `dist/reports/build.json`, `dist/reports/epubcheck.json`, `dist/reports/ace/report.json`), reproducibility conditions, and validation gates.
+- [Installation guide](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/installation.md): Linux, macOS, Windows, offline/CI setups, GitHub Action (`uses: sagol/mdbindery@v0.1.1`).
+- [Troubleshooting](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/troubleshooting.md): Common errors and remediation steps.
+- [Architecture and design](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/design.md): Internal pipeline, Lua filters (`book.lua`), CSS (`epub.css`), and gate mechanics.
