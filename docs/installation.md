@@ -1,6 +1,6 @@
 # Installation
 
-mdbindery is a Python command that drives external tools: pandoc for the conversion, EPUBCheck (a Java program) for validation, and Node.js with mermaid-cli and DAISY Ace for charts, the accessibility check, and screenshots. The installers set all of this up in a per-user folder. No administrator rights are needed, and the system Python is left alone.
+mdbindery is a Python command that drives external tools: pandoc for the conversion, EPUBCheck (a Java program) for validation, and Node.js with mermaid-cli and DAISY Ace for charts, the accessibility check, and EPUB screenshots. Optional PDF export uses the installed Chromium with pypdf from the `pdf` extra; see [PDF setup](pdf.md#install-pdf-dependencies). The installers set all of this up in a per-user folder. No administrator rights are needed, and the system Python is left alone.
 
 ## Requirements
 
@@ -65,8 +65,8 @@ When the installer finishes, open a new terminal and run `mdbindery doctor` (see
 The commands above install the latest code on `main`. To install a release, take the installer from its tag and pass the same tag as `--ref` (`-Ref` on Windows):
 
 ```
-curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/v0.1.1/install/install.sh | bash -s -- --ref v0.1.1
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/sagol/mdbindery/v0.1.1/install/install.ps1))) -Ref v0.1.1
+curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/v0.2.0/install/install.sh | bash -s -- --ref v0.2.0
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/sagol/mdbindery/v0.2.0/install/install.ps1))) -Ref v0.2.0
 ```
 
 The installers never ask questions and exit with a non-zero status when a step fails, so they can run unattended in provisioning scripts and CI.
@@ -81,7 +81,7 @@ Every channel installs the same `mdbindery` command. The external tools always c
 | PyPI with uv | `uv tool install mdbindery` | `uv tool upgrade mdbindery` |
 | PyPI with pip | `python -m pip install mdbindery` (in a virtual environment) | `python -m pip install -U mdbindery` |
 | Homebrew (macOS, Linux) | `brew install sagol/tap/mdbindery` | `brew upgrade mdbindery` |
-| A release's files | the wheel or source archive from the [releases page](https://github.com/sagol/mdbindery/releases): `pipx install ./mdbindery-0.1.1-py3-none-any.whl` | install the newer file |
+| A release's files | the wheel or source archive from the [releases page](https://github.com/sagol/mdbindery/releases): `pipx install ./mdbindery-0.2.0-py3-none-any.whl` | install the newer file |
 
 After any of these, run:
 
@@ -90,7 +90,7 @@ mdbindery install-tools
 mdbindery doctor
 ```
 
-To pin a version: `pipx install mdbindery==0.1.1`, `uv tool install mdbindery==0.1.1`.
+To pin a version: `pipx install mdbindery==0.2.0`, `uv tool install mdbindery==0.2.0`.
 
 ### GitHub Actions
 
@@ -102,7 +102,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: sagol/mdbindery@v0.1.1
+      - uses: sagol/mdbindery@v0.2.0
       - run: mdbindery check . --build
       - run: mdbindery build
       - uses: actions/upload-artifact@v4
@@ -271,7 +271,7 @@ A manual install (see below) creates only `tools/`.
 | Node.js | 24.21.0 | `node` on `PATH`, used when `tools/node/` has none | Runs mermaid-cli, Ace, and `mdbindery preview` | SHA-256 in `installer.py` |
 | mermaid-cli | 12.0.0 | Only the copy in `tools/npm/` is used | Renders Mermaid charts to PNG | Pinned version; npm checks package integrity; dependencies resolved by npm |
 | DAISY Ace | 1.4.6 | Only the copy in `tools/npm/` is used | The ace gate | Pinned version; npm checks package integrity; dependencies resolved by npm |
-| chrome-headless-shell | the builds the bundled Puppeteer copies request | Only the builds in `tools/puppeteer/` are used | Page rendering for mermaid-cli, Ace, and `preview` | Downloaded by Puppeteer; mdbindery does not check it |
+| chrome-headless-shell | the builds the bundled Puppeteer copies request | Only the builds in `tools/puppeteer/` are used | Page rendering for mermaid-cli, Ace, EPUB `preview`, and PDF export | Downloaded by Puppeteer; mdbindery does not check it |
 | git | any | Optional | The build timestamp; `mdbindery check` of repositories | Not downloaded |
 
 On Windows arm64 the x64 build of pandoc is installed (there is no arm64 build) and runs under emulation.
@@ -323,6 +323,8 @@ Chrome's sandbox stays on for mermaid-cli and `preview` wherever it works. mdbin
 - Chrome failed with a message about its sandbox, for example on a system that restricts unprivileged user namespaces. mdbindery then retries without the sandbox, logs `warning: Chrome's sandbox cannot start on this machine; Mermaid now renders without it`, and writes `<tool home>/tools/no-sandbox`, so later runs start without it.
 
 `preview` follows the marker and the variables above, but its own sandbox failure is not remembered: it warns and takes that run's screenshots without the sandbox. It also keeps scripts off and loads only the EPUB's own files (see [building.md](building.md#previewing-pages)).
+
+PDF requires an explicit `MDBINDERY_NO_SANDBOX=1` to disable its sandbox; it neither retries automatically nor follows the Mermaid marker. See [PDF security and failures](pdf.md#checks-and-failures).
 
 `mdbindery doctor` shows `mermaid    renders PNG (Chrome sandbox off)` when the sandbox is off. To try the sandbox again after changing the system, delete `tools/no-sandbox`. Ace always starts its Chrome without the sandbox (a setting inside Ace); it only opens the EPUB that was just built. Other launch problems are covered in [troubleshooting](troubleshooting.md#puppeteer-and-chrome-launch-failures).
 
@@ -386,7 +388,7 @@ Building needs no network access: a remote image (`https://...`) is never downlo
 `mdbindery doctor` prints the version, the tool home, and one line per tool. A full install in the default tool home (path shortened):
 
 ```
-mdbindery 0.1.1
+mdbindery 0.2.0
 tool home: .../.local/share/mdbindery (default; set MDBINDERY_HOME to use another)
 --- tools
 pandoc     pandoc 3.11
@@ -443,3 +445,7 @@ Not removed:
 - A uv you installed yourself.
 
 Installed from PyPI, Homebrew, or manually: uninstall the package (`pipx uninstall mdbindery`, `uv tool uninstall mdbindery`, `brew uninstall mdbindery`, or delete the venv), then delete the tool home folder.
+
+## Optional PDF export
+
+PDF needs the `pdf` Python extra and the Node/Puppeteer tools; an install with `--no-node` cannot export PDF. See [PDF installation](pdf.md#install-pdf-dependencies). PDF export requires version 0.2.0 or newer. Install `python -m pip install 'mdbindery[pdf]>=0.2.0'` in your Python environment. Base installers omit this extra. `doctor` checks the EPUB toolchain; a successful `doctor` run does not prove pypdf is installed.

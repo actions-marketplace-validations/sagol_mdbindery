@@ -3,7 +3,6 @@ import json
 import os
 import re
 import shutil
-import subprocess
 import sys
 import tempfile
 import urllib.error
@@ -91,12 +90,15 @@ def parse_target(target):
 
 
 def fetch(target, ref=None, log=progress):
-    """Return (local_path, cleanup_dir, github_info). target: path, GitHub URL, or git URL."""
+    """Return (local_path, cleanup_dir, github_info, repo_root, removed_symlinks).
+
+    Local folders have no cleanup directory or repository boundary and no removed symlinks.
+    """
     p = Path(target)
     if p.exists():
         if not p.is_dir():
             raise ValueError(f'not a folder: {target} (give the book folder or its repository URL)')
-        return p.resolve(), None, None
+        return p.resolve(), None, None, None, []
     kind = parse_target(target)
     if kind[0] == 'local':
         if re.match(r'^[\w.-]+\.[a-z]{2,}/', target):
@@ -129,9 +131,9 @@ def _fetch(kind, ref, tmp, log):
             cmd += ['--branch', branch]
         env = dict(os.environ, GIT_TERMINAL_PROMPT='0', GIT_SSH_COMMAND=os.environ.get(
             'GIT_SSH_COMMAND', 'ssh -o BatchMode=yes'))
-        try:
-            r = subprocess.run(cmd + ['--', url, str(dest)], capture_output=True, text=True, env=env, timeout=600)
-        except subprocess.TimeoutExpired:
+        r = tools.run_process(cmd + ['--', url, str(dest)], env=env,
+                              timeout=tools.deadline(600), tail=65536)
+        if r.timed_out:
             raise RuntimeError(f'git clone timed out: {url}')
         if r.returncode != 0:
             err = r.stderr.strip()
@@ -180,8 +182,8 @@ def _fetch(kind, ref, tmp, log):
     info = None
     if gh:
         if not branch:
-            r = subprocess.run([git, '-C', str(dest), 'rev-parse', '--abbrev-ref', 'HEAD'], capture_output=True,
-                               text=True) if git else None
+            r = tools.run_process([git, '-C', str(dest), 'rev-parse', '--abbrev-ref', 'HEAD'],
+                                  timeout=tools.deadline(20), tail=65536) if git else None
             branch = (r.stdout.strip() if r and r.returncode == 0 else 'main') or 'main'
         info = {'owner': kind[1], 'repo': kind[2], 'branch': branch, 'subdir': subdir}
     local = (dest / subdir).resolve() if subdir else dest.resolve()
@@ -531,13 +533,11 @@ def suspicious_math(expr):
 # ------------------------------------------------------------------ main
 
 def check(target, config_path=None, ref=None, do_build=False, render=True, log=progress):
-    fetched = fetch(target, ref, log)
-    local, cleanup, gh = fetched[:3]
-    repo_root = fetched[3] if len(fetched) > 3 else None
+    local, cleanup, gh, repo_root, removed = fetch(target, ref, log)
     rep = Report(target)
     if gh:
         rep.facts['github'] = gh
-    for link in (fetched[4] if len(fetched) > 4 else []):
+    for link in removed:
         rep.add('warning', 'MB407', f'symlink pointing outside the repository was removed: {link}',
                 'Commit the file itself; a checked repository may not read files outside its checkout.', link)
     try:

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0 (2026-09-28)
+
+- Report failed tool version probes correctly in `doctor`, including timeouts and launch errors.
+- Stop Git fetch subprocesses on timeout or interruption and bound captured diagnostics.
+- Fix EPUB preview when the system temporary directory uses a symlink, including macOS `/var`.
+- Add opt-in `build --format pdf` using shared chapter preparation and installed Chromium.
+- Add A4/Letter page settings, margins, page numbers and PDF text/resource checks.
+- Keep EPUB default and PDF reports separate. PDF requires the optional `pdf` Python extra.
+
 ## 0.1.1 (2026-09-26)
 
 Fixes from an external audit of 0.1.0.

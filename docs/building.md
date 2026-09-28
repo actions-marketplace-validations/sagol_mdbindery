@@ -2,10 +2,12 @@
 
 `mdbindery build` turns the book into an EPUB 3 file, validates it, and writes reports next to it. The rules the Markdown must follow are in [book-structure.md](book-structure.md), every configuration key is in [configuration.md](configuration.md), and the dry run that finds problems before a build is in [checking.md](checking.md).
 
+For PDF, use `mdbindery build ./my-book --format pdf`. [PDF export](pdf.md) explains its dependencies, page settings and separate checks. This page describes the default EPUB build.
+
 ## Usage
 
 ```
-mdbindery build [path] [-c CONFIG] [-o OUT] [--no-ace] [--keep-work] [-q]
+mdbindery build [path] [-c CONFIG] [-o OUT] [--format epub|pdf] [--no-ace] [--keep-work] [-q]
 ```
 
 | Argument | Meaning |
@@ -13,6 +15,7 @@ mdbindery build [path] [-c CONFIG] [-o OUT] [--no-ace] [--keep-work] [-q]
 | `path` | Book folder, or a configuration file. Default: the folder of the `--config` file when one is given, otherwise the current folder |
 | `-c CONFIG`, `--config CONFIG` | Configuration file to use instead of the one found in the book folder |
 | `-o OUT`, `--out OUT` | Output folder. Default: `output_dir` from the configuration (`dist`), relative to the configuration file's folder, or to the book folder when there is no configuration file |
+| `--format` | Select output; `epub` is the default. PDF dependencies, reports and checks are described in [PDF export](pdf.md) |
 | `--no-ace` | Skip the Ace accessibility check. The gate is recorded as `skipped` and the log has no Ace line. `options.ace: false` in the configuration does the same |
 | `--keep-work` | Keep the temporary work folder with every intermediate file. The log ends with `work folder kept: <path>` (with `-q`, that line is only in `reports/build.log`) |
 | `-q`, `--quiet` | Print only the last line (`BUILD OK` or `BUILD FAILED: ...`). The full log still goes to `reports/build.log`. Errors that stop the build still go to stderr |
@@ -21,7 +24,7 @@ The configuration is found in this order: `--config`; `path` itself when it is a
 
 An mdBook book is recognized automatically. When the book folder holds `book.toml` and the source folder it names (`src` in `book.toml`, `src/` by default) holds `SUMMARY.md`, that source folder becomes the book folder, the reading order comes from `SUMMARY.md`, and the title, authors, description, and language come from `book.toml` unless the configuration sets them. This also works when `source_dir` points at the folder with `book.toml`, and a book folder that holds `SUMMARY.md` with `book.toml` one level up works the same way. A `files:` list in the configuration overrides `SUMMARY.md`. A `SUMMARY.md` without any `book.toml` only sets the reading order. See [configuration.md](configuration.md#mdbook-books).
 
-Without a configuration file, mdbindery infers everything from the folder (see [configuration.md](configuration.md#what-is-inferred-when-keys-are-missing)), but then the book gets a new identifier on every build.
+Without a configuration file, mdbindery infers everything from the folder (see [configuration.md](configuration.md#what-is-inferred-when-keys-are-missing)), but then each EPUB build gets a new identifier. PDF export does not generate or save one.
 
 Examples:
 

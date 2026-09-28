@@ -1,7 +1,7 @@
 {
-  "name": "mdbindery: Markdown chapters to EPUB 3",
+  "name": "mdbindery: Markdown chapters to EPUB and PDF",
   "short_name": "mdbindery",
-  "description": "Build EPUB 3 ebooks from Markdown chapters or mdBook projects, run configured validation checks, and review the results.",
+  "description": "Build EPUB 3 ebooks or paginated PDFs from Markdown chapters and mdBook projects. EPUB is the default; PDF export requires the optional pdf extra.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#111110",

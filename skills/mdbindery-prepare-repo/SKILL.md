@@ -1,13 +1,13 @@
 ---
 name: mdbindery-prepare-repo
-description: Prepare a GitHub or local repository of Markdown chapters so that mdbindery builds a correct, validated EPUB 3 from it while the book stays readable on GitHub. Covers the reading order, mdbindery.yaml, headings, links and GitHub anchors (../ and / paths, .html links, source_url for a published website), citations and footnotes, images and the cover, wide tables, Mermaid charts, math and dollar signs, raw HTML, mdBook books, license and metadata, and a check-and-fix loop that ends when every build gate passes and the phone-size screenshots look right. Use when the user asks to prepare a repo for an ebook or EPUB, make this repo an ebook, turn a Markdown repository or mdBook into a book, fix the chapter order, links, citations, or images for an EPUB, fix mdbindery check errors or warnings, fix failed build gates, or get a repository to pass `mdbindery check` and `mdbindery build`. To only run the tool (install, check, build, preview), use the mdbindery skill.
+description: Prepare a GitHub or local repository of Markdown chapters for mdbindery EPUB 3 or optional PDF output while the book stays readable on GitHub. Covers the reading order, mdbindery.yaml, headings, links and GitHub anchors (../ and / paths, .html links, source_url for a published website), citations and footnotes, images and the cover, wide tables, Mermaid charts, math and dollar signs, raw HTML, mdBook books, license and metadata, and a check-and-fix loop that ends when every build gate passes and the phone-size screenshots look right. Use when the user asks to prepare a repo for an ebook, EPUB or PDF, make this repo an ebook, turn a Markdown repository or mdBook into a book, fix the chapter order, links, citations, or images for an EPUB, fix mdbindery check errors or warnings, fix failed build gates, or get a repository to pass `mdbindery check` and `mdbindery build`. To only run the tool (install, check, build, preview), use the mdbindery skill.
 ---
 
 # Prepare a repository for mdbindery
 
-mdbindery builds an EPUB 3 from Markdown written the GitHub way: one file per chapter, relative links between files, images inside the repository, citations as `[1]` with reference definitions. This skill brings an existing repository into that shape and loops on `mdbindery check` and `mdbindery build` until every gate passes. The same files must keep rendering well on github.com.
+mdbindery builds EPUB 3 or optional PDF from Markdown written the GitHub way: one file per chapter, relative links between files, images inside the repository, citations as `[1]` with reference definitions. This skill brings an existing repository into that shape and loops on `mdbindery check` and `mdbindery build` until every gate passes. The same files must keep rendering well on github.com.
 
-The authoritative rules are in `docs/book-structure.md`, `docs/checking.md`, and `docs/configuration.md` of the mdbindery repository. This skill adds the procedure, a fix for every check code, and the tool's limits, verified against mdbindery 0.1.1.
+The authoritative rules are in `docs/book-structure.md`, `docs/checking.md`, and `docs/configuration.md` of the mdbindery repository. This skill adds the procedure, a fix for every check code, and the tool's limits, covering the `0.2.0` EPUB and PDF workflows. The procedure below uses EPUB by default. For PDF-only work, apply the same source fixes, then follow the PDF instructions in the `mdbindery` skill: build with `--format pdf`, read `reports/pdf/`, and inspect PDF layout in a viewer. Do not require EPUBCheck, Ace, an identifier or EPUB screenshots for PDF-only delivery. `check --build` remains EPUB-only.
 
 ## When to use
 
@@ -46,7 +46,7 @@ Use the `mdbindery` skill instead when the book is already clean and the task is
 
 ```
 my-book/
-├── mdbindery.yaml          # configuration, with the identifier the first build writes
+├── mdbindery.yaml          # configuration, with the identifier the first EPUB build writes
 ├── README.md               # front matter: what the book is (optional)
 ├── 01-first-chapter.md     # chapters, one "#" heading each, in reading order
 ├── 02-second-chapter.md
@@ -495,7 +495,7 @@ mdbindery recognizes an mdBook (MB130): a `book.toml` in the book folder or the 
 - Encoding (MB105 error): UTF-8 is required, and the build stops on any other encoding. Find the real encoding (`file -i ch.md`), convert (`iconv -f WINDOWS-1252 -t UTF-8 ch.md > ch.tmp && mv ch.tmp ch.md`, with the encoding the file actually has), and check that accented letters read correctly. A byte order mark and CRLF line endings are handled (info only); leave them.
 - Code blocks: tag fences with a language for highlighting. Long lines (MB720) wrap on phones; code is content, so leave it unless the author wants it reflowed.
 
-### 15. Trial build, build, preview
+### 15. EPUB trial build, build, preview
 
 1. Rerun the check after each batch of fixes until it has 0 errors, and 0 warnings where feasible. Every warning that remains needs a reason in the report: an author decision, or a known limitation.
 2. Run the trial build (EPUBCheck, Ace, word count, and every other gate; codes MB900 to MB904). It builds in a temporary folder, never writes into the config, and runs only when the static check has no errors:
@@ -513,7 +513,7 @@ mdbindery recognizes an mdBook (MB130): a `book.toml` in the book folder or the 
    mdbindery build --keep-work     # keeps intermediate files (path printed) for debugging
    ```
 
-   Exit codes: 0 prints `BUILD OK`; 1 prints `BUILD FAILED: <gates>`; 2 is a configuration or input error (`config error:` or `build error:` on stderr). The first build writes the identifier into `mdbindery.yaml`. Details are in `dist/reports/build.json` (`failed_gates`, `gates`), `dist/reports/build.log`, `dist/reports/epubcheck.json`, and `dist/reports/ace/report.html`.
+   Exit codes: 0 prints `BUILD OK`; 1 prints `BUILD FAILED: <gates>`; 2 is a configuration or input error (`config error:` or `build error:` on stderr). The first EPUB build writes the identifier into `mdbindery.yaml`. Details are in `dist/reports/build.json` (`failed_gates`, `gates`), `dist/reports/build.log`, `dist/reports/epubcheck.json`, and `dist/reports/ace/report.html`.
 
 4. When a gate fails:
 
@@ -540,12 +540,12 @@ mdbindery recognizes an mdBook (MB130): a `book.toml` in the book folder or the 
 
 ### 16. Final verification
 
-Before you report the book as done, confirm each point:
+For EPUB delivery, confirm each point below. For PDF-only delivery, use the PDF checks in the `mdbindery` skill and inspect the PDF layout.
 
 - [ ] `mdbindery check .` exits with 0; every remaining warning has a reason in the report.
 - [ ] `mdbindery check . --build` reports `Trial build: passed (N KB)`.
 - [ ] `mdbindery build` (with Ace) prints `BUILD OK`, and `build.json` has no gate at `skipped` or `warn` (a `warn` on `charts` or `ace` means a missing tool).
-- [ ] `mdbindery.yaml` has the identifier the first build wrote, and the title, authors, language, and rights the author confirmed.
+- [ ] `mdbindery.yaml` has the identifier the first EPUB build wrote, and the title, authors, language, and rights the author confirmed.
 - [ ] The reading order in `files:` matches the book's intended order; nothing that belongs in the book is left out, and no navigation or translation file is in.
 - [ ] The screenshots show the cover, one table of contents entry per chapter with its sections, figures at full width with captions, cards, readable charts, reference lists and citation links, endnotes, and no raw Markdown or HTML and no icon-sized pictures.
 - [ ] The files still render on GitHub: links and images are relative, and nothing GitHub-only was deleted without approval.
@@ -577,7 +577,7 @@ Severity: E error, W warning, I info (note). Only errors make `check` exit with 
 | MB121 | W | no author | set `metadata.authors` after asking the user |
 | MB122 | I | language inferred | set `metadata.lang` |
 | MB123 | W | no license or rights statement | set `metadata.rights` or add a LICENSE (the author chooses) |
-| MB124 | I | no identifier yet | keep the empty `identifier:` line; the first build fills it |
+| MB124 | I | no identifier yet | keep the empty `identifier:` line; the first EPUB build fills it |
 | MB125 | I | reading order inferred (the message says from what) | check it, then write it into `files:` |
 | MB126 | W | a table of contents file is in the reading order | remove it from `files:` |
 | MB130 | I | mdBook layout recognized | see step 13 |
@@ -629,7 +629,7 @@ Severity: E error, W warning, I info (note). Only errors make `check` exit with 
 
 ## Known limitations
 
-Verified in mdbindery 0.1.1. Keep them in mind so you do not chase phantom problems or miss real ones.
+Verified in mdbindery 0.2.0. Keep them in mind so you do not chase phantom problems or miss real ones.
 
 - MB106 and MB110 are warnings because the build repairs these files; fix them anyway, since the repaired titles come from file names or promoted headings the author did not choose. MB107 is a warning because the book still builds, with one more table of contents entry for each extra `#` heading.
 - `facts.totals.images` estimates image kinds line by line (8.2); the preview decides.
@@ -644,7 +644,7 @@ Verified in mdbindery 0.1.1. Keep them in mind so you do not chase phantom probl
 
 ## Snippets
 
-Config template (`init` writes the same shape; the first build fills `identifier:`):
+Config template (`init` writes the same shape; the first EPUB build fills `identifier:`):
 
 ```yaml
 slug: my-book
@@ -656,7 +656,7 @@ metadata:
   subtitle: A subtitle, or leave empty
   authors: [First Last]
   lang: en-US
-  # identifier: left empty, a permanent urn:uuid is written here on the first build
+  # identifier: left empty, a permanent urn:uuid is written here on the first EPUB build
   identifier:
   date: git
   rights: Text licensed under CC BY 4.0

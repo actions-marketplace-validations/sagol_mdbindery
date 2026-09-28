@@ -45,7 +45,7 @@ def _err(msg):
 
 def cmd_build(a):
     from . import config as config_mod
-    from .build import BuildError, build
+    from .build import BuildError, build, report_dir
     try:
         cfg = config_mod.load(a.path, a.config)
     except config_mod.ConfigError as e:
@@ -57,13 +57,13 @@ def cmd_build(a):
         lines.append(msg)
         if not a.quiet:
             _out(msg)
-    reports = (Path(a.out) if a.out else cfg.base / cfg['output_dir']).resolve() / 'reports'
+    reports = report_dir(a.out or cfg.base / cfg['output_dir'], a.format)
 
     def save_log():  # also after a failed build, next to its build.json
         if reports.is_dir():
             (reports / 'build.log').write_text('\n'.join(lines) + '\n', encoding='utf-8')
     try:
-        s = build(cfg, out_dir=a.out, run_ace=not a.no_ace, keep_work=a.keep_work, log=log)
+        s = build(cfg, out_dir=a.out, run_ace=not a.no_ace, keep_work=a.keep_work, log=log, output_format=a.format)
     except BuildError as e:
         lines.append(f'build error: {e}')
         save_log()
@@ -192,18 +192,19 @@ def cmd_preview(a):
 def parser():
     p = argparse.ArgumentParser(
         prog='mdbindery', formatter_class=argparse.RawDescriptionHelpFormatter, epilog=EPILOG,
-        description='Turn a folder or GitHub repository of Markdown chapters into a validated EPUB 3.')
+        description='Build EPUB 3 ebooks or PDFs from Markdown chapters.')
     p.add_argument('--version', action='version', version=f'mdbindery {__version__}')
     sub = p.add_subparsers(dest='cmd', metavar='COMMAND')
 
-    b = sub.add_parser('build', help='build the EPUB and run the validation gates',
-                       description='Build <output_dir>/<slug>.epub, then run the gates: links, images, charts, '
-                                   'EPUBCheck, Ace, and the word count. Exit 0 when every gate passes, '
+    b = sub.add_parser('build', help='build EPUB or PDF and run format-specific checks',
+                       description='Build <output_dir>/<slug>.epub (default) or .pdf. Both check source links, images and charts. '
+                                   'EPUB uses EPUBCheck, Ace and word counts; PDF checks rendered resources and text. Exit 0 when every gate passes, '
                                    '1 when a gate fails, 2 on a config or input error.')
     b.add_argument('path', nargs='?', default=None,
                    help='book folder or config file (default: the --config file\'s folder, else the current folder)')
     b.add_argument('-c', '--config', help='config file (default: <book>/mdbindery.yaml, or inferred)')
     b.add_argument('-o', '--out', help='output folder (default: output_dir from the config, "dist")')
+    b.add_argument('--format', choices=['epub', 'pdf'], default='epub', help='output format (default: epub)')
     b.add_argument('--no-ace', action='store_true', help='skip the Ace accessibility check (faster)')
     b.add_argument('--keep-work', action='store_true', help='keep the intermediate files and print their folder')
     b.add_argument('-q', '--quiet', action='store_true', help='print only the final BUILD OK / BUILD FAILED line')
@@ -241,7 +242,7 @@ def parser():
                                    '($MDBINDERY_HOME). Safe to run again: installed versions are skipped.')
     t.add_argument('--no-node', action='store_true',
                    help='skip Node.js, mermaid-cli, and Ace (charts become placeholders, no accessibility check, '
-                        'no preview)')
+                        'no preview or PDF export)')
     t.add_argument('--java', choices=['auto', 'always', 'never'], default='auto',
                    help='install a Java runtime: auto = only when no Java 11+ is found (default)')
     t.add_argument('--force', action='store_true', help='reinstall even if present')

@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "name": "mdbindery",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "canonical_manifest": "https://sagol.github.io/mdbindery/agents.json",
   "llms_txt": "https://sagol.github.io/mdbindery/llms.txt",
   "llms_full_txt": "https://sagol.github.io/mdbindery/llms-full.txt"

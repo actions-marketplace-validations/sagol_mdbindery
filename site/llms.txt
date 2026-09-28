@@ -1,8 +1,8 @@
 # mdbindery
 
-> Build EPUB 3 ebooks from Markdown chapters or mdBook projects. Supports chapter links, local images, numeric citations, Mermaid diagrams, math, and wide tables. Runs configured validation gates, including W3C EPUBCheck 5.4.0, DAISY Ace 1.4.6, and per-file word counts. Review warnings, failures, and skipped checks before publishing.
+> Build EPUB 3 ebooks or paginated PDFs from Markdown chapters and mdBook projects. Shared preparation handles links, citations, images, Mermaid, math and tables. EPUB uses EPUBCheck, Ace and per-file word counts; PDF checks resources, internal links and extracted text. Review reports and layout before publishing.
 
-- Version: `0.1.1`
+- Released version: `0.2.0`. PDF export requires the optional `pdf` extra.
 - License: MIT
 - Author: Taras Baranyuk
 - Repository: https://github.com/sagol/mdbindery
@@ -41,7 +41,12 @@ mdbindery init
 # Build EPUB 3 and run configured validation gates
 mdbindery build path/to/your-book
 
-# Render phone-size (412x915 CSS px, 2x scale) PNG screenshots
+# PDF: install the extra in your Python environment
+python -m pip install 'mdbindery[pdf]>=0.2.0'
+mdbindery install-tools
+mdbindery build path/to/your-book --format pdf
+
+# Render EPUB phone-size (412x915 CSS px, 2x scale) PNG screenshots
 mdbindery preview dist/writing-a-book-in-markdown.epub shots
 ```
 
@@ -52,12 +57,13 @@ mdbindery preview dist/writing-a-book-in-markdown.epub shots
 
 ## Documentation
 
-- [Full LLM reference (llms-full.txt)](https://sagol.github.io/mdbindery/llms-full.txt): Complete single-file reference with CLI flags, exit codes, `mdbindery.yaml` schema, all 59 MB check codes, and 7 build gates.
+- [Full LLM reference (llms-full.txt)](https://sagol.github.io/mdbindery/llms-full.txt): Complete single-file reference with CLI flags, exit codes, `mdbindery.yaml` schema, all 59 MB check codes and format-specific gates.
 - [Tutorial](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/tutorial.md): Walkthrough for building and checking an EPUB 3 ebook from Markdown.
 - [Book structure](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/book-structure.md): Headings, relative links, anchors, `[1]` citations, footnotes, images, covers, tables, Mermaid charts.
 - [Configuration reference](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/configuration.md): Every `mdbindery.yaml` key (`metadata`, `files`, `cover`, `options`).
 - [Checks and diagnostic codes](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/checking.md): `mdbindery check`, JSON report format, and every `MB001`–`MB904` diagnostic code with fix instructions.
 - [Builds and validation gates](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/building.md): Build pipeline, outputs (`dist/<slug>.epub`, `dist/reports/build.json`, `dist/reports/epubcheck.json`, `dist/reports/ace/report.json`), reproducibility conditions, and validation gates.
-- [Installation guide](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/installation.md): Linux, macOS, Windows, offline/CI setups, GitHub Action (`uses: sagol/mdbindery@v0.1.1`).
+- [PDF export](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/pdf.md): PDF installation, A4/Letter settings, margins, fonts, text/resource checks and layout limits. Reports use `reports/pdf/`; EPUB remains default.
+- [Installation guide](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/installation.md): Linux, macOS, Windows, offline/CI setups, GitHub Action (`uses: sagol/mdbindery@v0.2.0`).
 - [Troubleshooting](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/troubleshooting.md): Common errors and remediation steps.
 - [Architecture and design](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/design.md): Internal pipeline, Lua filters (`book.lua`), CSS (`epub.css`), and gate mechanics.

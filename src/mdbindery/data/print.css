@@ -1,0 +1,20 @@
+/* Print overrides for the shared book styles. Page geometry comes from options.pdf. */
+html, body { margin: 0; padding: 0; }
+body { font-size: 11pt; line-height: 1.45; hyphens: none; }
+* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+header#title-block-header { margin: 0; padding-top: 25mm; break-after: page; }
+section.pdf-cover { text-align: center; break-after: page; }
+section.pdf-cover img { max-height: calc(var(--page-height) - 2mm); width: auto; }
+nav#TOC { break-after: page; }
+h1:not(.title) { break-before: page; }
+h1, h2, h3, h4, h5, h6 { break-after: avoid; }
+p, li { widows: 3; orphans: 3; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+code, a { overflow-wrap: anywhere; }
+thead { display: table-header-group; }
+tfoot { display: table-footer-group; }
+tr { break-inside: avoid; }
+th, td { overflow-wrap: anywhere; }
+img, div.full-page img { max-height: calc(var(--page-height) - 15mm); object-fit: contain; }
+figure { break-inside: avoid; }
+section.footnotes { break-before: page; }

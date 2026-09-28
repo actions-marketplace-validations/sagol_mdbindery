@@ -325,32 +325,49 @@ def install_npm_packages(force=False):
 def self_test():
     """Tool status: a dict of name -> version string or None, plus 'notes'."""
     status, notes = {}, {}
+
+    def version(name, cmd, timeout=60, env=None):
+        if not cmd:
+            return None
+        try:
+            r = tools.run_process(cmd, env=env, timeout=timeout, tail=65536)
+        except OSError as e:
+            detail = str(e)
+        else:
+            output = (r.stdout + r.stderr).strip()
+            if r.returncode == 0 and output:
+                return output
+            detail = (r.stderr or r.stdout).strip() or f'exit {r.returncode}; no version output'
+        notes[name] = 'installed but does not run: ' + detail.split('\n')[0][:200]
+        return None
+
     p = tools.find('pandoc')
-    status['pandoc'] = tools.run_process([p, '--version'], timeout=60).stdout.split('\n')[0] if p else None
+    output = version('pandoc', [p, '--version'] if p else None)
+    status['pandoc'] = output.split('\n')[0] if output else None
     old = tools.old_pandoc_on_path()
     if old and not p:
         notes['pandoc'] = f'{old} on PATH is older than 3.8 and is not used'
     ec = tools.epubcheck_cmd()
     status['epubcheck'] = None
     if ec:
-        r = tools.run_process(ec + ['--version'], timeout=120, tail=65536)
-        m = re.search(r'EPUBCheck v[\d.]+', (r.stdout or '') + (r.stderr or ''))
+        output = version('epubcheck', ec + ['--version'], timeout=120)
+        m = re.search(r'EPUBCheck v[\d.]+', output or '')
         if m:
             status['epubcheck'] = m.group(0)
-        else:
-            notes['epubcheck'] = 'installed but does not run: ' + ((r.stderr or r.stdout).strip().split('\n') or [''])[0][:200]
+        elif output:
+            notes['epubcheck'] = 'unrecognized version output: ' + output.split('\n')[0][:200]
     elif tools.epubcheck_jar():
         notes['epubcheck'] = 'needs Java 11 or newer'
     j = tools.find('java')
     status['java'] = f'{j} (version {tools.java_version(j)})' if j else None
     n = tools.find('node')
-    status['node'] = tools.run_process([n, '--version'], timeout=60).stdout.strip() if n else None
-    status['mermaid'] = mermaid_ok()
+    status['node'] = version('node', [n, '--version']) if n else None
+    try:
+        status['mermaid'] = mermaid_ok()
+    except OSError as e:
+        status['mermaid'] = 'installed but cannot render: ' + str(e)[:200]
     a = tools.command('ace')
-    status['ace'] = None
-    if a:
-        r = tools.run_process(a + ['--version'], env=tools.ace_env(), timeout=120, tail=65536)
-        status['ace'] = r.stdout.strip() or None
+    status['ace'] = version('ace', a + ['--version'], env=tools.ace_env(), timeout=120) if a else None
     try:
         import PIL
         import yaml
