@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fix EPUB preview when the system temporary directory uses a symlink, including macOS `/var`.
 - Add opt-in `build --format pdf` using shared chapter preparation and installed Chromium.
 - Add A4/Letter page settings, margins, page numbers and PDF text/resource checks.
 - Keep EPUB default and PDF reports separate. PDF requires the optional `pdf` Python extra.

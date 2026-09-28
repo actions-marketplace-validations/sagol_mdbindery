@@ -249,3 +249,24 @@ def test_pdf_missing_python_extra_fails_before_analysis(tmp_path, monkeypatch):
         build(cfg, out_dir=out, output_format='pdf', log=quiet)
     report = json.loads((out / 'reports' / 'pdf' / 'build.json').read_text())
     assert report['failed_stage'] == 'pdf_dependencies' and report['format'] == 'pdf'
+
+
+@needs_pandoc
+def test_epub_preview_with_symlinked_temp_directory(copy_book, tmp_path, browser, monkeypatch):
+    from mdbindery import preview as preview_module
+    cfg = validate_if_installed(config.load(copy_book(FIXTURES / 'ru-book')))
+    summary = build(cfg, out_dir=tmp_path / 'out', run_ace=False, log=quiet)
+    real = tmp_path / 'real-temp'
+    real.mkdir()
+    alias = tmp_path / 'temp-alias'
+    try:
+        alias.symlink_to(real, target_is_directory=True)
+    except OSError:
+        pytest.skip('Creating directory symlinks requires privileges on this system')
+    original = preview_module.tempfile.mkdtemp
+    def aliased_temp(**kwargs):
+        return original(dir=alias, **kwargs)
+    monkeypatch.setattr(preview_module.tempfile, 'mkdtemp', aliased_temp)
+    shots = preview_module.preview(summary['epub'], tmp_path / 'shots', pages=['text/ch001.xhtml'])
+    assert shots and Path(shots[0]).read_bytes().startswith(b'\x89PNG')
+    assert not list(real.iterdir())

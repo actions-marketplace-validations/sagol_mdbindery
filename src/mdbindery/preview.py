@@ -46,7 +46,7 @@ def preview(epub, out, pages=None, width=412, height=915, full=False, warn=print
     if not zipfile.is_zipfile(epub):
         raise ValueError(f'not an EPUB file: {epub}')
     node, env = tools.puppeteer_runtime()
-    tmp = Path(tempfile.mkdtemp(prefix='mdbindery-preview-'))
+    tmp = Path(tempfile.mkdtemp(prefix='mdbindery-preview-')).resolve()
     try:
         with zipfile.ZipFile(epub) as z:
             names = z.namelist()
