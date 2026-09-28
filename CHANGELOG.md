@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Add opt-in `build --format pdf` using shared chapter preparation and installed Chromium.
+- Add A4/Letter page settings, margins, page numbers and PDF text/resource checks.
+- Keep EPUB default and PDF reports separate. PDF requires the optional `pdf` Python extra.
+
 ## 0.1.1 (2026-09-26)
 
 Fixes from an external audit of 0.1.0.

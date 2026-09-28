@@ -626,3 +626,7 @@ cd books/mars-colony-epub && mdbindery build
 ```
 
 If the identifier is left empty here, the build writes it into this external file, not into the book repository.
+
+## PDF page settings
+
+`options.pdf` applies only to `build --format pdf`. Defaults: `page_size: A4`, `margin_mm: 20`, `page_numbers: true`. Page sizes: `A4` or `Letter`; margins: 10 to 40 mm. See [PDF export](pdf.md) for examples, font handling and validation limits. EPUB remains the default output.

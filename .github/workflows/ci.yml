@@ -47,6 +47,10 @@ jobs:
         run: python -m pytest -v
       - name: Build the sample book
         run: mdbindery build examples/sample-book
+      - name: Build sample PDF
+        env:
+          MDBINDERY_NO_SANDBOX: '1'  # explicit opt-out on the CI runner only
+        run: mdbindery build examples/sample-book --format pdf
       - name: Build from a folder and temp folder with non-ASCII names and spaces
         run: python tests/ci_unicode_paths.py
       - name: Check the broken fixture (must report errors)

@@ -45,11 +45,7 @@ def preview(epub, out, pages=None, width=412, height=915, full=False, warn=print
         raise ValueError(f'EPUB not found: {epub}')
     if not zipfile.is_zipfile(epub):
         raise ValueError(f'not an EPUB file: {epub}')
-    node = tools.find('node')
-    modules = tools.npm_modules_dir()
-    pup = next(iter(sorted(modules.rglob('node_modules/puppeteer/package.json'))), None) if modules.exists() else None
-    if not node or not pup:
-        raise RuntimeError('preview needs Node.js and Puppeteer: run `mdbindery install-tools` (without --no-node)')
+    node, env = tools.puppeteer_runtime()
     tmp = Path(tempfile.mkdtemp(prefix='mdbindery-preview-'))
     try:
         with zipfile.ZipFile(epub) as z:
@@ -85,8 +81,6 @@ def preview(epub, out, pages=None, width=412, height=915, full=False, warn=print
             raise ValueError(f"not in the EPUB: {', '.join(missing)}\npages: {', '.join(xhtml)}")
         out.mkdir(parents=True, exist_ok=True)
         (tmp / 'shot.js').write_text(JS, encoding='utf-8')
-        env = tools.tool_env()
-        env['NODE_PATH'] = str(pup.parent.parent)
         def shoot():
             (tmp / 'jobs.json').write_text(json.dumps(jobs), encoding='utf-8')
             return tools.run_process([node, str(tmp / 'shot.js'), str(tmp / 'jobs.json')], env=env,

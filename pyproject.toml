@@ -31,7 +31,8 @@ classifiers = [
 dependencies = ["PyYAML>=6.0", "Pillow>=9.0"]
 
 [project.optional-dependencies]
-test = ["pytest>=7"]
+test = ["pytest>=7", "pypdf>=5"]
+pdf = ["pypdf>=5"]
 
 [project.scripts]
 mdbindery = "mdbindery.cli:main"

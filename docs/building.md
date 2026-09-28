@@ -2,6 +2,8 @@
 
 `mdbindery build` turns the book into an EPUB 3 file, validates it, and writes reports next to it. The rules the Markdown must follow are in [book-structure.md](book-structure.md), every configuration key is in [configuration.md](configuration.md), and the dry run that finds problems before a build is in [checking.md](checking.md).
 
+For PDF, use `mdbindery build ./my-book --format pdf`. [PDF export](pdf.md) explains its dependencies, page settings and separate checks. This page describes the default EPUB build.
+
 ## Usage
 
 ```

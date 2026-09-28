@@ -45,6 +45,7 @@ DEFAULTS = {
         'epubcheck': True, 'ace': True, 'ace_waivers': [],
         'accessibility_summary': '',
         'conformance_claim': '',
+        'pdf': {'page_size': 'A4', 'margin_mm': 20, 'page_numbers': True},
     },
 }
 
@@ -458,6 +459,14 @@ def validate(data):
         cov[k] = _str(cov.get(k), f'cover.{k}')
         if not re.fullmatch(r'#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?', cov[k]):
             raise ConfigError(f'cover.{k} must be a color like #1d2330')
+
+    if not isinstance(o.get('pdf'), dict):
+        raise ConfigError('options.pdf must be a mapping (page_size, margin_mm, page_numbers)')
+    pdf = o['pdf']
+    if pdf.get('page_size') not in ('A4', 'Letter'):
+        raise ConfigError('options.pdf.page_size must be A4 or Letter')
+    pdf['margin_mm'] = _num(pdf.get('margin_mm'), 'options.pdf.margin_mm', float, 10, 40)
+    pdf['page_numbers'] = _bool(pdf.get('page_numbers'), 'options.pdf.page_numbers')
 
     if not isinstance(o.get('cards'), dict):
         raise ConfigError('options.cards must be a mapping (files, min_columns, title_columns)')

@@ -443,3 +443,7 @@ Not removed:
 - A uv you installed yourself.
 
 Installed from PyPI, Homebrew, or manually: uninstall the package (`pipx uninstall mdbindery`, `uv tool uninstall mdbindery`, `brew uninstall mdbindery`, or delete the venv), then delete the tool home folder.
+
+## Optional PDF export
+
+PDF needs the `pdf` Python extra and the Node/Puppeteer tools; an install with `--no-node` cannot export PDF. See [PDF installation](pdf.md#install-pdf-dependencies). Base EPUB dependencies and installer behavior remain unchanged.

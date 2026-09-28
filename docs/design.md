@@ -492,3 +492,9 @@ The one-line form (download through `curl | bash` or `irm | iex`) runs in `insta
 - The word-count gate compares counts per file, so it does not see text that moved within a file or that was replaced by the same number of words, and a loss below the tolerance passes.
 - `check` of a private repository needs the user's own git credentials (SSH keys or a credential helper); git is never allowed to prompt. The HTTPS archive fallback without git works only for public GitHub repositories.
 - npm packages are pinned by top-level version only, so their dependencies may change between installs. The Java runtime is the latest Temurin 21 build at install time, verified with the checksum the Adoptium API reports. `build.json` records the versions that made each book (`provenance`), but not the npm dependency tree or the browser builds.
+
+## PDF output path
+
+`build(..., output_format="pdf")` reuses `analyze()` and existing source gates, then calls `pdf.render()`. EPUB writer, postprocessing and validation functions retain their behavior. PDF creates one HTML5 document from the resolved Pandoc AST, stages declared assets, adds print CSS and uses Puppeteer `page.pdf()`. `tools.puppeteer_runtime()` shares browser discovery with EPUB preview. No PDF renderer registry or plugin layer.
+
+The optional `pdf` extra supplies pypdf. PDF validation checks actual extracted text against generated HTML text and records page count. Failed text checks retain the PDF for inspection. Renderer failure removes temporary output and preserves the previous PDF. Reports live under `reports/pdf/`, leaving EPUB reports untouched. `tests/test_pdf.py` covers PDF content, Unicode paths, settings, resources, failures and EPUB coexistence. Tests needing browser tools fail rather than skip when `MDBINDERY_REQUIRE_TOOLS=1`.

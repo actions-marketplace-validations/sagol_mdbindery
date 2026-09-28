@@ -181,6 +181,18 @@ def tool_env():
     return env
 
 
+def puppeteer_runtime():
+    """Node and environment for the installed Puppeteer shared by preview and PDF."""
+    node = find('node')
+    modules = npm_modules_dir()
+    package = next(iter(sorted(modules.rglob('node_modules/puppeteer/package.json'))), None) if modules.exists() else None
+    if not node or not package:
+        raise RuntimeError('Node.js and Puppeteer are required: run `mdbindery install-tools` (without --no-node)')
+    env = tool_env()
+    env['NODE_PATH'] = str(package.parent.parent)
+    return node, env
+
+
 def java_version(java):
     try:
         r = subprocess.run([java, '-version'], capture_output=True, text=True, encoding='utf-8',

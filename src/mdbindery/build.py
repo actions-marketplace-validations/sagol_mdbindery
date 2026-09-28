@@ -1,4 +1,4 @@
-"""Build pipeline: analyze (pre-pass, per-file AST, link resolution) and build (EPUB + gates)."""
+"""Build pipeline: analyze (pre-pass, per-file AST, link resolution) and build (EPUB/PDF + gates)."""
 import datetime
 import json
 import os
@@ -591,12 +591,20 @@ def provenance(cfg):
     return out
 
 
-def build(cfg, out_dir=None, run_ace=True, keep_work=False, log=print, analysis=None):
-    """Build the EPUB. Returns a summary dict; summary['ok'] is True when every gate passed.
+def report_dir(out_dir, output_format='epub'):
+    """One report location for build summaries and CLI logs."""
+    reports = Path(out_dir).resolve() / 'reports'
+    return reports / 'pdf' if output_format == 'pdf' else reports
+
+
+def build(cfg, out_dir=None, run_ace=True, keep_work=False, log=print, analysis=None, output_format='epub'):
+    """Build EPUB (default) or PDF. Returns a summary dict; summary['ok'] is True when every gate passed.
 
     analysis: a result of analyze() to reuse (check --build); its work folder belongs to the caller.
-    The EPUB in the output folder is always the latest one built; build.json says whether it passed.
+    The selected artifact is replaced after rendering; build.json says whether its gates passed.
     """
+    if output_format not in ('epub', 'pdf'):
+        raise BuildError('output format must be epub or pdf')
     opts = cfg.opts
     if not cfg['files']:
         raise BuildError('no Markdown files in the reading order (MB100): add chapters or list them under files:')
@@ -608,10 +616,10 @@ def build(cfg, out_dir=None, run_ace=True, keep_work=False, log=print, analysis=
     if out_dir.exists() and not out_dir.is_dir():
         raise BuildError(f'output folder is a file: {out_dir}')
     slug = cfg['slug']
-    epub = (out_dir / f'{slug}.epub').resolve()
-    if epub.parent != out_dir:
+    artifact = (out_dir / f'{slug}.{output_format}').resolve()
+    if artifact.parent != out_dir:
         raise BuildError(f'slug must be a plain file name: {slug!r}')
-    reports = out_dir / 'reports'
+    reports = report_dir(out_dir, output_format)
     reports.mkdir(parents=True, exist_ok=True)
     clear_gate_reports(reports)  # stale validator reports from an earlier build would mislead
     own_work = analysis is None
@@ -628,11 +636,18 @@ def build(cfg, out_dir=None, run_ace=True, keep_work=False, log=print, analysis=
         summary['timings'][name] = round(time.monotonic() - t0, 2)
         t0 = time.monotonic()
     try:
+        if output_format == 'pdf':
+            from . import pdf
+            stage = 'pdf_dependencies'
+            summary['format'] = 'pdf'
+            pdf_runtime = pdf.requirements()
+            stage = 'analysis'
         epoch = source_epoch(cfg)
         a = analysis or analyze(cfg, work, log)
         done('analysis')
-        stage = 'identifier'
-        ident = ensure_identifier(cfg, log)
+        if output_format == 'epub':
+            stage = 'identifier'
+            ident = ensure_identifier(cfg, log)
         date = cfg.meta.get('date') or 'git'
         if date == 'git':
             date = (datetime.datetime.fromtimestamp(epoch, datetime.timezone.utc).date().isoformat()
@@ -729,59 +744,68 @@ def build(cfg, out_dir=None, run_ace=True, keep_work=False, log=print, analysis=
         stage = 'cover'
         store_cover, embed_cover = make_covers(cfg, out_dir, work, slug)
         css = write_css(cfg, work)
-        stage = 'epub'
-        linked = json.loads(Path(a['linked']).read_text(encoding='utf-8'))
-        linked['meta'] = book_metadata(cfg, ident, date)  # literal strings: titles are not Markdown
-        book_json = work / 'book.json'
-        book_json.write_text(json.dumps(linked), encoding='utf-8')
-        raw_epub = work / 'book.epub'
-        cmd = [pandoc, '-f', 'json', '-t', 'epub3', book_json, '-o', raw_epub,
-               '--css', css, '--epub-cover-image', embed_cover, '--split-level', str(opts['split_level']),
-               '--toc-depth', str(opts['toc_depth']),
-               f'--resource-path={os.pathsep.join([str(work), str(cfg.source)])}']
-        if opts['toc']:
-            cmd.append('--toc')
-        # monochrome by default: readable on e-ink and passes contrast checks
-        cmd.append(f"--syntax-highlighting={opts.get('highlight_style') or 'none'}")
-        for fnt in opts['embed_fonts']:
-            fp = Path(fnt)
-            cmd += ['--epub-embed-font', str(fp if fp.is_absolute() else cfg.base / fp)]
-        env = tools.tool_env()
-        if epoch:
-            env['SOURCE_DATE_EPOCH'] = str(max(epoch, 315532800))  # zip dates start in 1980
-        r = run(cmd, env=env, timeout=1800)
-        warnings = [line.strip() for line in (r.stderr or '').splitlines() if line.strip()]
-        for line in warnings:
-            log(f'  pandoc: {line}')
-        summary['pandoc_warnings'] = warnings
-        postprocess(raw_epub, epub, cfg, has_images, epoch, all_alt)
-        summary['epub'] = str(epub)
-        summary['cover'] = str(store_cover)
-        log(f'  built {epub} ({epub.stat().st_size // 1024} KB)')
-        done('epub')
+        if output_format == 'pdf':
+            stage = 'pdf'
+            gate, browser = pdf.render(cfg, a, work, css, embed_cover, artifact, str(date), log, runtime=pdf_runtime)
+            summary.update(pdf=str(artifact), cover=str(store_cover))
+            summary['provenance'].update(browser)
+            summary['gates']['pdf'] = gate
+            log(f'  built {artifact} ({artifact.stat().st_size // 1024} KB)')
+            done('pdf')
+        else:
+            stage = 'epub'
+            linked = json.loads(Path(a['linked']).read_text(encoding='utf-8'))
+            linked['meta'] = book_metadata(cfg, ident, date)  # literal strings: titles are not Markdown
+            book_json = work / 'book.json'
+            book_json.write_text(json.dumps(linked), encoding='utf-8')
+            raw_epub = work / 'book.epub'
+            cmd = [pandoc, '-f', 'json', '-t', 'epub3', book_json, '-o', raw_epub,
+                   '--css', css, '--epub-cover-image', embed_cover, '--split-level', str(opts['split_level']),
+                   '--toc-depth', str(opts['toc_depth']),
+                   f'--resource-path={os.pathsep.join([str(work), str(cfg.source)])}']
+            if opts['toc']:
+                cmd.append('--toc')
+            # monochrome by default: readable on e-ink and passes contrast checks
+            cmd.append(f"--syntax-highlighting={opts.get('highlight_style') or 'none'}")
+            for fnt in opts['embed_fonts']:
+                fp = Path(fnt)
+                cmd += ['--epub-embed-font', str(fp if fp.is_absolute() else cfg.base / fp)]
+            env = tools.tool_env()
+            if epoch:
+                env['SOURCE_DATE_EPOCH'] = str(max(epoch, 315532800))  # zip dates start in 1980
+            r = run(cmd, env=env, timeout=1800)
+            warnings = [line.strip() for line in (r.stderr or '').splitlines() if line.strip()]
+            for line in warnings:
+                log(f'  pandoc: {line}')
+            summary['pandoc_warnings'] = warnings
+            postprocess(raw_epub, artifact, cfg, has_images, epoch, all_alt)
+            summary['epub'] = str(artifact)
+            summary['cover'] = str(store_cover)
+            log(f'  built {artifact} ({artifact.stat().st_size // 1024} KB)')
+            done('epub')
 
-        stage = 'epubcheck'
-        if opts.get('epubcheck', True):
-            summary['gates']['epubcheck'] = gate_epubcheck(epub, reports, log)
-        else:
-            log('  EPUBCheck: skipped (options.epubcheck: false)')
-            summary['gates']['epubcheck'] = {'result': 'skipped'}
-        done('epubcheck')
-        stage = 'ace'
-        if run_ace and opts['ace']:
-            summary['gates']['ace'] = gate_ace(epub, reports, cfg, log)
-        else:
-            summary['gates']['ace'] = {'result': 'skipped'}
-        done('ace')
-        stage = 'wordcount'
-        summary['gates']['wordcount'] = gate_wordcount(epub, cfg, a, log)
-        done('wordcount')
+            stage = 'epubcheck'
+            if opts.get('epubcheck', True):
+                summary['gates']['epubcheck'] = gate_epubcheck(artifact, reports, log)
+            else:
+                log('  EPUBCheck: skipped (options.epubcheck: false)')
+                summary['gates']['epubcheck'] = {'result': 'skipped'}
+            done('epubcheck')
+            stage = 'ace'
+            if run_ace and opts['ace']:
+                summary['gates']['ace'] = gate_ace(artifact, reports, cfg, log)
+            else:
+                summary['gates']['ace'] = {'result': 'skipped'}
+            done('ace')
+            stage = 'wordcount'
+            summary['gates']['wordcount'] = gate_wordcount(artifact, cfg, a, log)
+            done('wordcount')
     except Exception as e:
         # a stopped build still leaves its own diagnostics: the failed stage, the error, the artifact state
         summary.update(ok=False, failed_gates=[], failed_stage=stage, error=str(e)[-4000:])
-        if not summary.get('epub'):
-            summary['artifact'] = ('an EPUB from an earlier build is in the output folder; it is not this build'
-                                   if epub.exists() else 'none')
+        if not summary.get(output_format):
+            summary['artifact'] = (f'an {output_format.upper()} from an earlier build is in the output folder; it is not this build'
+                                   if artifact.exists() else 'none')
         write_summary(reports, summary)
         raise
     finally:

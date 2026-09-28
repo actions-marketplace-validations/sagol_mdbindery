@@ -11,6 +11,8 @@ mdbindery check https://github.com/OWNER/REPO     # what to fix, file by file an
 mdbindery build path/to/your-book                 # dist/<slug>.epub, validated
 ```
 
+PDF export is also available with `mdbindery build --format pdf`. See [PDF dependencies, settings and checks](docs/pdf.md). EPUB remains the default.
+
 ## What it does
 
 - Links between chapters, including links to headings in other files and custom `<a id>` anchors, become internal EPUB links. A link that has no target fails the build.
