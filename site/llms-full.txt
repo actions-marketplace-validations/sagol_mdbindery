@@ -1,29 +1,29 @@
 # mdbindery: technical reference for LLMs and coding agents
 
 - Package: `mdbindery`
-- Version: `0.1.1`
+- Released version: `0.1.1`. PDF support is unreleased; use a source checkout with the `pdf` extra.
 - License: MIT
 - Author: Taras Baranyuk
 - Repository: https://github.com/sagol/mdbindery
 - Homepage: https://sagol.github.io/mdbindery/
 - PyPI: https://pypi.org/project/mdbindery/
-- Python requirement: `>=3.9` (`PyYAML>=6.0`, `Pillow>=9.0`)
+- Python requirement: `>=3.9` (`PyYAML>=6.0`, `Pillow>=9.0`; optional PDF extra: `pypdf>=5`)
 
 ---
 
 ## 1. Purpose and capabilities
 
-`mdbindery` converts a local folder or GitHub repository of Markdown chapters (or an `mdBook` project with `book.toml` and `SUMMARY.md`) into an EPUB 3 ebook and runs configured validation gates (`links`, `images`, `charts`, `includes`, `epubcheck`, `ace`, `wordcount`).
+`mdbindery` converts a local folder or GitHub repository of Markdown chapters (or an `mdBook` project with `book.toml` and `SUMMARY.md`) into EPUB 3 (default) or PDF (`--format pdf`). Both share source gates (`links`, `images`, `charts`, `includes`). EPUB adds `epubcheck`, `ace` and `wordcount`; PDF adds rendered-resource, internal-link and extracted-text checks. Each format keeps separate reports.
 
 Conversions:
 
-1. **Cross-file links & GitHub anchors**: Relative links (`02-chapter.md`, `02-chapter.md#section-slug`, `.html` links to `.md` chapters, and custom `<a id="...">` anchors) become internal EPUB spine/fragment links. Links to existing repository files outside the book rewrite to `source_url` or plain text.
+1. **Cross-file links & GitHub anchors**: Relative links (`02-chapter.md`, `02-chapter.md#section-slug`, `.html` links to `.md` chapters, and custom `<a id="...">` anchors) become internal links in either output format. Links to existing repository files outside the book rewrite to `source_url` or plain text.
 2. **Numeric citations**: Reference definitions with numeric labels (`[1]: https://example.com "Title"`) become a visible numbered reference list under the chapter's reference heading, and inline `[1]` markers link to them.
 3. **Images & covers**: Images become inline icons (when inside a paragraph with text), block images, captioned `<figure>` elements (when given a title `![alt](img.png "Caption")`), or dedicated full-page images (`"full-page"` title). Generates a `1600x2560` typographic cover from `metadata.title`, `metadata.subtitle`, and `metadata.authors` when no cover image is supplied.
 4. **Mermaid diagrams**: Fenced ```` ```mermaid ```` blocks render to PNG images via `mermaid-cli` with alt text extracted from the diagram (or become placeholders when `mermaid-cli` is unavailable or `options.mermaid: placeholder`).
 5. **Wide tables to phone cards**: For chapter files listed in `options.cards.files`, tables with at least `options.cards.min_columns` columns (default `9`) transform into vertical per-row card blocks using `options.cards.title_columns` (default `1`) header columns.
-6. **Math, footnotes, alerts, HTML**: TeX math converts to native MathML; footnotes become numbered endnotes; GitHub alerts (`> [!NOTE]`, `> [!WARNING]`), task lists, monochrome syntax highlighting, and supported raw GitHub README HTML (`<br>`, `<sup>`, `<sub>`, `<details>`, `<img>`, `<p align>`) convert to valid EPUB 3 XHTML.
-7. **Reproducible builds**: Building the same commit twice with the same tools, fonts, and a saved `metadata.identifier` produces byte-identical `.epub` files. Without an `identifier:` line in `mdbindery.yaml`, each build generates a new random `urn:uuid` and outputs differ. Generated covers depend on available system fonts.
+6. **Math, footnotes, alerts, HTML**: TeX math converts to native MathML; footnotes become numbered endnotes; GitHub alerts (`> [!NOTE]`, `> [!WARNING]`), task lists, monochrome syntax highlighting, and supported raw GitHub README HTML (`<br>`, `<sup>`, `<sub>`, `<details>`, `<img>`, `<p align>`) pass through shared cleanup into EPUB XHTML or HTML for PDF.
+7. **Reproducible EPUB builds**: Building the same commit twice with the same tools, fonts, and a saved `metadata.identifier` produces byte-identical `.epub` files. Without an `identifier:` line in `mdbindery.yaml`, each EPUB build generates a new random `urn:uuid` and outputs differ. Generated covers depend on available system fonts. PDF bytes are not guaranteed reproducible, and PDF does not generate or save an identifier.
 
 ---
 
@@ -48,7 +48,7 @@ irm https://raw.githubusercontent.com/sagol/mdbindery/main/install/install.ps1 |
 
 Installer flags (`install.sh` / `install.ps1`):
 
-- `--no-node` / `-NoNode`: Skip Node.js, `mermaid-cli`, and `Ace` (~370 MB total instead of ~1.5 GB). Charts become placeholders (`charts` gate warns); `ace` gate warns without running; `preview` is unavailable.
+- `--no-node` / `-NoNode`: Skip Node.js, `mermaid-cli`, and `Ace` (~370 MB total instead of ~1.5 GB). Charts become placeholders (`charts` gate warns); `ace` gate warns without running; `preview` and PDF export are unavailable.
 - `--java auto|always|never` / `-Java`: Control Eclipse Temurin JRE download.
 - `--no-tools` / `-NoTools`: Install `mdbindery` CLI only.
 - `--local PATH` / `-Local`: Install from local checkout.
@@ -73,11 +73,24 @@ GitHub Actions workflow:
 - run: mdbindery build path/to/book
 ```
 
+### PDF dependencies (source checkout)
+
+Version `0.1.1` lacks PDF support. At the root of a checkout containing the feature, run inside your Python environment:
+
+```sh
+python -m pip install '.[pdf]'
+mdbindery install-tools
+mdbindery build examples/sample-book --format pdf
+```
+
+The extra installs pypdf. Rendering reuses the installed Node.js, Puppeteer and Chromium. Do not use `--no-node` for PDF. See [PDF guide](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/pdf.md).
+
 Environment variables:
 
 - `MDBINDERY_HOME`: Override managed tool directory (default `~/.local/share/mdbindery` on Linux, `~/Library/Application Support/mdbindery` on macOS, `%LOCALAPPDATA%\mdbindery` on Windows).
 - `MDBINDERY_BIN`: Override CLI binary location (default `~/.local/bin`).
 - `MDBINDERY_TIMEOUT_SCALE`: Float multiplier for external subprocess timeouts.
+- `MDBINDERY_NO_SANDBOX=1`: Explicitly disable PDF browser sandbox on a trusted CI/container host that cannot start it. PDF never retries automatically or follows the Mermaid fallback marker.
 
 ---
 
@@ -89,6 +102,8 @@ Prints `mdbindery` version, tool home path, and status of `pandoc` (>=3.8 requir
 
 - Exit `0`: `pandoc` and `epubcheck` present (missing Node tools emit notes only).
 - Exit `1`: `pandoc` or `epubcheck` missing/broken.
+
+`doctor` checks the EPUB toolchain; it does not check pypdf or prove PDF export readiness.
 
 ### `mdbindery init [path] [--force]`
 
@@ -104,7 +119,7 @@ Dry-run inspection on local directory or remote repository URL (`https://github.
 
 - `-c FILE`, `--config FILE`: Use custom config file.
 - `--ref REF`: Branch or tag for remote URL.
-- `--build`: Run a trial build in a temporary directory (`mdbindery-trial-*`) if static checks found 0 errors.
+- `--build`: Run a trial EPUB build in a temporary directory (`mdbindery-trial-*`) if static checks found 0 errors.
 - `--no-render`: Skip Mermaid PNG test-rendering during check.
 - `--report FILE`: Write Markdown report to `FILE`.
 - `--json FILE`: Write structured JSON report (`ok`, `counts`, `by_code`, `facts`, `findings`) to `FILE`.
@@ -114,19 +129,21 @@ Dry-run inspection on local directory or remote repository URL (`https://github.
 - Exit `2`: Target unreadable or report file unwritable.
 - Exit `3`: Internal error.
 
-### `mdbindery build [path] [-c CONFIG] [-o OUT] [--no-ace] [--keep-work] [-q]`
+### `mdbindery build [path] [-c CONFIG] [-o OUT] [--format epub|pdf] [--no-ace] [--keep-work] [-q]`
 
-Completed builds write `dist/<slug>.epub`, `dist/<slug>-cover.jpg`, `dist/reports/build.json`, and `dist/reports/build.log` under the default output directory. EPUBCheck and DAISY Ace reports appear at `dist/reports/epubcheck.json`, `dist/reports/ace/report.json`, and `dist/reports/ace/report.html` when those validators produce reports. Early failures may leave only failure diagnostics. If `metadata.identifier` is empty and `mdbindery.yaml` has an `identifier:` line, the first build generates a `urn:uuid` and saves it there (`identifier` can also be any user-supplied permanent ID).
+Completed EPUB builds write `dist/<slug>.epub`, `dist/<slug>-cover.jpg`, `dist/reports/build.json`, and `dist/reports/build.log` under the default output directory. EPUBCheck and DAISY Ace reports appear at `dist/reports/epubcheck.json`, `dist/reports/ace/report.json`, and `dist/reports/ace/report.html` when those validators produce reports. Early failures may leave only failure diagnostics. If `metadata.identifier` is empty and `mdbindery.yaml` has an `identifier:` line, the first EPUB build generates a `urn:uuid` and saves it there (`identifier` can also be any user-supplied permanent ID).
 
-- `build.json` records `gates` (`pass`, `warn`, `fail`, `skipped`), `failed_gates`, `skipped_gates`, `warning_gates`, `files`, `links`, `pandoc_warnings`, `timings`, and `provenance` (`mdbindery`, `python`, `pandoc` major.minor, `epubcheck`, `ace`, `source_revision`, and `options`).
-- Exit `0`: `BUILD OK` — EPUB written and no gate failed (`warn` or `skipped` gates do not fail the build).
-- Exit `1`: `BUILD FAILED` — EPUB written, but at least one gate failed.
-- Exit `2`: Configuration error (`config error: ...`) or pre-build error (`build error: ...`).
+PDF writes `dist/<slug>.pdf`, the shared cover and `dist/reports/pdf/{build.json,build.log}`. It preserves EPUB and its reports. PDF keeps readable output after a failed text gate; rendering errors preserve an older PDF and remove partial output. PDF records browser/Puppeteer provenance and leaves source configuration unchanged. `--no-ace` applies only to EPUB.
+
+- `build.json` records `gates` (`pass`, `warn`, `fail`, `skipped`), `failed_gates`, `skipped_gates`, `warning_gates`, `files`, `links`, `timings`, EPUB `pandoc_warnings`, and `provenance` (`mdbindery`, `python`, `pandoc` major.minor, `epubcheck`, `ace`, `source_revision`, and `options`).
+- Exit `0`: `BUILD OK` — Selected format written and no gate failed (`warn` or `skipped` gates do not fail the build).
+- Exit `1`: `BUILD FAILED` — Selected format written, but at least one gate failed.
+- Exit `2`: Configuration error (`config error: ...`) or build error (`build error: ...`).
 - Exit `3`: Internal error.
 
 ### `mdbindery preview <epub> <out> [page ...] [--width 412] [--height 915] [--full]`
 
-Renders screenshots of pages inside `<epub>` to folder `<out>` using headless Chrome. Both `<epub>` and `<out>` are required positional arguments.
+Renders screenshots of pages inside `<epub>` to folder `<out>` using headless Chrome. Both `<epub>` and `<out>` are required positional arguments. PDF input is not supported; inspect it with a PDF viewer.
 
 - `page`: Optional paths inside the EPUB (e.g. `text/ch002.xhtml` or `text/ch002.xhtml#some-id`). Without `page` arguments, captures cover, title page, table of contents (`nav.xhtml`), and first two chapters.
 - `--width`: Viewport width in CSS pixels (`200`–`4000`, default `412`).
@@ -149,7 +166,7 @@ Installs companion tools using the version and verification policy in section 2.
 
 ## 4. Build validation gates
 
-Builds that reach validation record the reported gate states (`pass`, `warn`, `fail`, or `skipped`) in `reports/build.json`. A trial build from `mdbindery check --build` uses a temporary directory. Early failures can stop the build before validation:
+Builds record gate states (`pass`, `warn`, `fail`, or `skipped`) in `reports/build.json` for EPUB or `reports/pdf/build.json` for PDF. Gates 1–4 are shared; gates 5–7 apply only to EPUB. A trial build from `mdbindery check --build` builds EPUB in a temporary directory. Early failures can stop the build before validation:
 
 1. **`links`**: Fails when an internal link target (chapter file or `#anchor`) is missing and `options.strict_links` is `true` (default). Warns when `options.strict_links` is `false`. Never skipped.
 2. **`images`**: Fails when an image is missing, remote (`http://`, `https://`), has an empty path, or (during the trial build of an untrusted repository checked by URL) lies outside the repository checkout. Ordinary local builds allow readable files outside the book folder. Never skipped.
@@ -160,6 +177,8 @@ Builds that reach validation record the reported gate states (`pass`, `warn`, `f
 7. **`wordcount`**: Fails when any chapter file's EPUB word count differs from its prepared Markdown source by more than `options.wordcount_tolerance` (default `0.02`, 2%) AND more than `options.wordcount_min_words` (default `25` words), after adjusting for repeated column labels in card tables. Never skipped.
 
 ---
+
+PDF uses a `pdf` gate instead of gates 5–7. It checks page count and extracted words against generated HTML, using `wordcount_tolerance` and `wordcount_min_words`. Resource/internal-link failures stop rendering with a build error. Browser scripts are disabled; only staged files and data URLs can load. Text extraction cannot prove correct pagination, glyphs, reading order or absence of clipping. PDF/A, PDF/UA and print-production readiness are not claimed.
 
 ## 5. Configuration schema (`mdbindery.yaml`)
 
@@ -248,7 +267,13 @@ options:
   ace_waivers: []
   accessibility_summary: ""
   conformance_claim: ""
+  pdf:
+    page_size: A4
+    margin_mm: 20
+    page_numbers: true
 ```
+
+`options.pdf` accepts A4/Letter, finite margins from 10 to 40 mm, and boolean page numbers. PDF uses shared CSS plus print overrides; CSS fonts must be listed in `embed_fonts` and referenced with the same paths. Other unstaged CSS resources are blocked. `toc` and `toc_depth` apply to both; `split_level` and accessibility claims apply only to EPUB.
 
 Notes on `files` entries (`FILE_KEYS = {'file', 'role', 'title', 'drop_sections', 'mermaid_alt', 'key'}`):
 
@@ -278,7 +303,7 @@ Notes on `files` entries (`FILE_KEYS = {'file', 'role', 'title', 'drop_sections'
 | `MB121` | warning | No author specified. Set `metadata.authors: ["First Last"]` in `mdbindery.yaml`. |
 | `MB122` | info | `metadata.lang` was inferred (`en-US`). Set `metadata.lang` in `mdbindery.yaml`. |
 | `MB123` | warning | No `metadata.rights` or `LICENSE` file found. Set `metadata.rights` or add `LICENSE`. |
-| `MB124` | info | `metadata.identifier` is empty; first build will generate and save a `urn:uuid` if `identifier:` is present in `mdbindery.yaml`. |
+| `MB124` | info | `metadata.identifier` is empty; first EPUB build will generate and save a `urn:uuid` if `identifier:` is present in `mdbindery.yaml`. |
 | `MB125` | info | Reading order was inferred (from `SUMMARY.md`, `README.md` links, or filenames). Set `files:` to lock order. |
 | `MB126` | warning | Table-of-contents file (`SUMMARY.md`, `toc.md`) included in `files:`. Remove it; EPUB generates its own TOC. |
 | `MB130` | info | `mdBook` layout detected (`book.toml` + `SUMMARY.md`). |

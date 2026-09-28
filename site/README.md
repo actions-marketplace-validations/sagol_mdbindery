@@ -1,14 +1,14 @@
 # mdbindery site
 
-Static landing page and technical reference for `mdbindery` (`v0.1.1`). Includes search metadata, coding-agent resources, and deployment helpers in `site/`.
+Static landing page and technical reference for `mdbindery` (`v0.1.1` release plus unreleased PDF export from source). Includes search metadata, coding-agent resources, and deployment helpers in `site/`.
 
 ## Files
 
-- `index.html` — Semantic HTML5 landing page, JSON-LD (`SoftwareApplication`, `HowTo`, `FAQPage`, `WebSite`), Open Graph / Twitter Card metadata, Content-Security-Policy, progressive-enhancement install tabs (all panels readable without JS), 7 validation gates overview, AI agent skill links, and live filter for all 59 `MB001`–`MB904` check codes.
+- `index.html` — Semantic HTML5 landing page, JSON-LD (`SoftwareApplication`, `HowTo`, `FAQPage`, `WebSite`), Open Graph / Twitter Card metadata, Content-Security-Policy, progressive-enhancement install tabs (all panels readable without JS), EPUB/PDF validation overview, AI agent skill links, and live filter for all 59 `MB001`–`MB904` check codes.
 - `styles.css` — Responsive dark/light theme stylesheet with primary controls above the 4.5:1 text-contrast threshold, `prefers-reduced-motion`, and sticky-header anchor offsets. Zero external font or CDN requests.
 - `app.js` — Local script allowed by the CSP for theme toggle, WAI-ARIA tabs, clipboard copy buttons with selection fallback and `aria-live` announcements, and check-code filtering.
 - `llms.txt` — Concise `llmstxt.org` index for AI agents and LLMs.
-- `llms-full.txt` — Single-file reference containing CLI commands, flags, exit codes, `mdbindery.yaml` schema (`config.DEFAULTS` & `FILE_KEYS`), 7 validation gates, and all 59 `MB` check codes.
+- `llms-full.txt` — Single-file reference containing CLI commands, flags, exit codes, `mdbindery.yaml` schema (`config.DEFAULTS` & `FILE_KEYS`), format-specific validation gates, and all 59 `MB` check codes.
 - `agents.json` & `.well-known/agent.json` — Project-specific JSON capability manifest and discovery pointer.
 - `robots.txt` — Catch-all crawl policy and `Sitemap:` pointer. Note: under a GitHub Pages project subpath (`https://sagol.github.io/mdbindery/`), crawlers read host-level `https://sagol.github.io/robots.txt`; `site/robots.txt` applies only when served from a custom domain root. Submit `https://sagol.github.io/mdbindery/sitemap.xml` directly in search consoles.
 - `validate.py` — Checks configuration examples, runnable CLI snippets, diagnostic identifiers, JSON/JSON-LD, and local references against the current source.
@@ -40,7 +40,7 @@ python3 site/stage.py _site
 
 Staging requires an empty destination and copies only `stage.PUBLIC_FILES`. The README, scripts, and workflow template are excluded. Preview `_site/` to review the published files.
 
-The validator parses command examples without executing them. It checks the HTML and LLM configuration examples against the current schema, not the existence of example book files. It also checks diagnostic identifiers, local links, fragment IDs, ARIA/copy targets, the web manifest, sitemap XML, and JSON-LD. It does not check external URLs, every prose claim, or screen-reader behavior.
+The validator parses command examples without executing them. It checks the HTML and LLM configuration examples against the current schema, not the existence of example book files. It also checks diagnostic identifiers, local links, fragment IDs, ARIA/copy targets, the web manifest, sitemap XML, and JSON-LD. It does not check external URLs, every prose claim, or screen-reader behavior. Keep unreleased PDF setup distinct from release installation. EPUB-only validation and byte-reproducibility claims must stay labeled.
 
 Before release, inspect 320, 390, 768, and 1280 px layouts in both themes. Check keyboard tabs, filtering, clipboard rejection, no-JS instructions, reduced motion, and zoom. Full accessibility conformance needs a broader review than these checks.
 

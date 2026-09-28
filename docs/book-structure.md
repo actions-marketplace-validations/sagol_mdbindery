@@ -1,5 +1,7 @@
 # Book structure rules
 
+These source rules apply to EPUB and PDF because both use the same chapter preparation. EPUB-specific navigation, metadata and reader details remain labeled below. For PDF page layout, fonts and limits, see [PDF export](pdf.md).
+
 These rules describe a Markdown repository that mdbindery turns into a correct EPUB without manual fixes. They also keep the book readable on GitHub, so the same files serve both. Run `mdbindery check` at any time to see which rules a repository breaks.
 
 Each rule gives the reason and, where it matters, the check code that reports it (see [checking.md](checking.md)). Settings mentioned here are described in [configuration.md](configuration.md).
@@ -271,7 +273,7 @@ Prefer Markdown. HTML is converted at every depth (inside quotes, list items, ta
 
 ## 12. Metadata and license
 
-- In `mdbindery.yaml`: `title`, `subtitle`, `authors`, `lang`, `rights`, `description`. Metadata is written literally, so Markdown or HTML in it appears as typed. Leave `identifier:` empty on its own line: the first build writes a permanent `urn:uuid` there, which stores use to recognize new versions of the same book (MB120 to MB124).
+- In `mdbindery.yaml`: `title`, `subtitle`, `authors`, `lang`, `rights`, `description`. Metadata is written literally, so Markdown or HTML in it appears as typed. Leave `identifier:` empty on its own line: the first EPUB build writes a permanent `urn:uuid` there, which stores use to recognize new versions of the same book (MB120 to MB124).
 - Keep a `LICENSE` file in the book folder or at the repository root. When `rights` is empty, mdbindery reads it: an `SPDX-License-Identifier:` line works best; Creative Commons, GNU, MIT, Apache 2.0, BSD, MPL, and Unlicense texts are recognized too. The details are in [configuration.md](configuration.md#license-detection).
 
 ## 13. Checklist

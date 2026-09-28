@@ -1,14 +1,14 @@
 # Design
 
-This page describes how mdbindery works inside, for people who change its code. User-facing behavior is in [building.md](building.md), [checking.md](checking.md), [configuration.md](configuration.md), and [installation.md](installation.md); the book rules are in [book-structure.md](book-structure.md).
+This page describes how mdbindery works inside, for people who change its code. User-facing behavior is in [building.md](building.md), [pdf.md](pdf.md), [checking.md](checking.md), [configuration.md](configuration.md), and [installation.md](installation.md); the book rules are in [book-structure.md](book-structure.md).
 
-mdbindery is a small Python package (dependencies: PyYAML and Pillow; Python 3.9 or newer) that orchestrates external programs. pandoc does all parsing and EPUB writing. Two Lua filters shipped with the package adapt GitHub-style Markdown to a single EPUB and prepare text for the word count. EPUBCheck, DAISY Ace, and the word count validate the result.
+mdbindery is a small Python package (dependencies: PyYAML and Pillow; Python 3.9 or newer) that orchestrates external programs. pandoc parses Markdown and writes EPUB or HTML. Shared Lua filters prepare chapters and links. EPUB uses EPUBCheck, DAISY Ace and per-chapter word counts. Optional PDF export prints HTML with the installed Chromium and validates extracted text with pypdf.
 
 ## Module map
 
 | Path | Responsibility |
 |---|---|
-| `src/mdbindery/cli.py` | argparse front end for `build`, `check`, `init`, `install-tools`, `doctor`, `preview`; exit codes; one-line errors on stderr; writes `reports/build.log` after a build |
+| `src/mdbindery/cli.py` | argparse front end for `build`, `check`, `init`, `install-tools`, `doctor`, `preview`; exit codes; one-line errors on stderr; writes the selected format's `build.log` after a build |
 | `src/mdbindery/__main__.py` | `python -m mdbindery` |
 | `src/mdbindery/__init__.py` | `__version__`, the only place the version is set (`pyproject.toml` reads it) |
 | `src/mdbindery/config.py` | `DEFAULTS`; loading, merging, and validating `mdbindery.yaml`; unknown-key errors and warnings; reading-order discovery (toc files, README links, file names); mdBook `book.toml` and `SUMMARY.md`; inference of title, rights, language, cover, slug; git facts (repository root, GitHub remote, branch); containment rules for untrusted repositories; `save_identifier()`; `starter_yaml()` for `init` |
@@ -16,7 +16,9 @@ mdbindery is a small Python package (dependencies: PyYAML and Pillow; Python 3.9
 | `src/mdbindery/build.py` | `analyze()` (pre-pass, per-file pandoc pass, links pass), the Mermaid renderer, covers, metadata, stylesheet, the EPUB call, `postprocess()`, the gates, and `build()` |
 | `src/mdbindery/data/book.lua` | The main pandoc Lua filter, with a `file` phase and a `links` phase |
 | `src/mdbindery/data/plaintext.lua` | Filter for the word count: raw HTML becomes the text a reader sees |
-| `src/mdbindery/data/epub.css` | Default stylesheet |
+| `src/mdbindery/data/epub.css` | Shared default book stylesheet |
+| `src/mdbindery/pdf.py` | Staged HTML/assets, Chromium printing and PDF text validation |
+| `src/mdbindery/data/print.css` | PDF pagination and print overrides |
 | `src/mdbindery/check.py` | `check`: fetching a folder, GitHub URL, or git URL; static checks with MB codes; reuse of `analyze()`; the optional trial build; Markdown and JSON reports |
 | `src/mdbindery/cover.py` | Generated typographic cover; fonts come from fontconfig (`fc-match`) for the book's language, else from a list of common system fonts |
 | `src/mdbindery/preview.py` | Phone-size screenshots through Node.js and Puppeteer |
@@ -27,6 +29,8 @@ mdbindery is a small Python package (dependencies: PyYAML and Pillow; Python 3.9
 | `examples/sample-book/` | A small book that uses every feature; CI builds it |
 
 ## Data flow
+
+Both formats share preparation through `linked.json`. The default EPUB path follows below; [PDF output](#pdf-output-path) describes the other branch.
 
 ```
 mdbindery.yaml -> config.load() -> Config (data, path, base, source, repo_root, trusted, github, ...)
@@ -56,7 +60,7 @@ gates: charts, links, images, includes, EPUBCheck, Ace, word count
 
 Why one pandoc run per file instead of one run over all files: pandoc would concatenate the inputs and lose what each file needs on its own, namely its folder (for relative image and link paths), its reference definitions, and GitHub's per-file anchor namespace. The second pass is needed because a link can only be resolved once the identifiers of the whole book are known.
 
-`build()` in order: refuse an empty reading order, a missing pandoc, an output folder that is a file, and a slug that is not a plain file name, before anything is written; create `<out>/reports/` and remove only the files a build writes there (`build.json`, `build.log`, `epubcheck.json`, `ace/`); compute the timestamp (`source_epoch()`: last git commit, else a fixed `metadata.date`, else the newest source file); run `analyze()`; save a generated identifier (`ensure_identifier()`); log one line per file; decide the charts, links, images, and includes gates; make the covers; write the stylesheet; run pandoc; log its warnings; post-process; run EPUBCheck, Ace, and the word count; write `build.json` (atomically, through a `.part` file). Each stage's duration goes into `timings`, and `provenance()` records the tool versions, the source commit, and the effective options. An exception after `reports/` exists (a `BuildError` or any other) still writes `build.json` with `ok: false`, `failed_stage`, `error`, and `artifact` (`none`, or a note that the EPUB in the folder is from an earlier build), then propagates. The CLI writes `build.log` from the collected log lines after `build()` returns or raises `BuildError`. `build(..., analysis=a)` reuses a result of `analyze()` instead of running it; the caller then owns the work folder (`a['work']`), which `build()` leaves alone.
+The default EPUB `build()` path, in order: refuse an empty reading order, a missing pandoc, an output folder that is a file, and a slug that is not a plain file name, before anything is written; create `<out>/reports/` and remove only the files a build writes there (`build.json`, `build.log`, `epubcheck.json`, `ace/`); compute the timestamp (`source_epoch()`: last git commit, else a fixed `metadata.date`, else the newest source file); run `analyze()`; save a generated identifier (`ensure_identifier()`); log one line per file; decide the charts, links, images, and includes gates; make the covers; write the stylesheet; run pandoc; log its warnings; post-process; run EPUBCheck, Ace, and the word count; write `build.json` (atomically, through a `.part` file). Each stage's duration goes into `timings`, and `provenance()` records the tool versions, the source commit, and the effective options. An exception after `reports/` exists (a `BuildError` or any other) still writes `build.json` with `ok: false`, `failed_stage`, `error`, and `artifact` (`none`, or a note that the EPUB in the folder is from an earlier build), then propagates. The CLI writes `build.log` from the collected log lines after `build()` returns or raises `BuildError`. `build(..., analysis=a)` reuses a result of `analyze()` instead of running it; the caller then owns the work folder (`a['work']`), which `build()` leaves alone.
 
 ## Loading the configuration
 
@@ -450,7 +454,7 @@ Fixtures:
 - `tests/fixtures/ru-book/`: Cyrillic anchors, guillemets, em dashes, footnotes, a named citation label with `citation_labels: all`, a scene break, a Mermaid chart, and an inferred file list; used for the reproducibility test.
 - `examples/sample-book/`: the sample book, also built in CI.
 
-`needs_pandoc` and `needs_epubcheck` are `pytest.mark.skipif(...)` objects imported from `conftest`, not registered markers, so `-m` cannot select them; select tests with `-k` or by file. With `MDBINDERY_REQUIRE_TOOLS` set to any non-empty value, they never skip. Tool lookup goes through `tools.find()`, so `MDBINDERY_HOME` decides which tools the tests use. The build tests pass `run_ace=False`, so Ace is not needed; Mermaid charts are rendered when mermaid-cli is installed and become placeholders otherwise. Content tests pass their configuration through `validate_if_installed()`, which turns EPUBCheck off only when it is missing and tools are not required, so a pandoc-only environment runs every content assertion and skips just the EPUBCheck integration test, while CI validates every build.
+`needs_pandoc` and `needs_epubcheck` are `pytest.mark.skipif(...)` objects imported from `conftest`, not registered markers, so `-m` cannot select them; select tests with `-k` or by file. With `MDBINDERY_REQUIRE_TOOLS` set to any non-empty value, they never skip. Tool lookup goes through `tools.find()`, so `MDBINDERY_HOME` decides which tools the tests use. The build tests pass `run_ace=False`, so Ace is not needed; Mermaid charts are rendered when mermaid-cli is installed and become placeholders otherwise. Content tests pass their configuration through `validate_if_installed()`, which turns EPUBCheck off only when it is missing and tools are not required, so a pandoc-only environment runs EPUB content assertions without EPUBCheck. PDF and preview tests need Node/Puppeteer; CI requires these tools. The `test` extra installs pypdf.
 
 A build writes into the book (the generated identifier into `mdbindery.yaml`, and `dist/`). Tests therefore never build a book in place: `copy_book` copies a fixture into `tmp_path` (without `dist/`) first. Do the same when you try things by hand.
 
@@ -495,6 +499,6 @@ The one-line form (download through `curl | bash` or `irm | iex`) runs in `insta
 
 ## PDF output path
 
-`build(..., output_format="pdf")` reuses `analyze()` and existing source gates, then calls `pdf.render()`. EPUB writer, postprocessing and validation functions retain their behavior. PDF creates one HTML5 document from the resolved Pandoc AST, stages declared assets, adds print CSS and uses Puppeteer `page.pdf()`. `tools.puppeteer_runtime()` shares browser discovery with EPUB preview. No PDF renderer registry or plugin layer.
+`build(..., output_format="pdf")` reuses `analyze()` and existing source gates, then calls `pdf.render()`. EPUB writer, postprocessing and validation functions retain their behavior. PDF creates one HTML5 document from the resolved Pandoc AST, stages declared assets, adds print CSS and uses Puppeteer `page.pdf()`. `tools.puppeteer_runtime()` shares browser discovery with EPUB preview. The checked browser runtime is passed once into the PDF renderer. `report_dir()` supplies the common report-location rule for build summaries and CLI logs.
 
-The optional `pdf` extra supplies pypdf. PDF validation checks actual extracted text against generated HTML text and records page count. Failed text checks retain the PDF for inspection. Renderer failure removes temporary output and preserves the previous PDF. Reports live under `reports/pdf/`, leaving EPUB reports untouched. `tests/test_pdf.py` covers PDF content, Unicode paths, settings, resources, failures and EPUB coexistence. Tests needing browser tools fail rather than skip when `MDBINDERY_REQUIRE_TOOLS=1`.
+PDF does not generate or persist an EPUB identifier. The optional `pdf` extra supplies pypdf. PDF validation checks actual extracted text against generated HTML text and records page count. Failed text checks retain the PDF for inspection. Renderer failure removes temporary output and preserves the previous PDF. Reports live under `reports/pdf/`, leaving EPUB reports untouched. `tests/test_pdf.py` covers PDF content, Unicode paths, settings, resources, failures and EPUB coexistence. Tests needing browser tools fail rather than skip when `MDBINDERY_REQUIRE_TOOLS=1`.

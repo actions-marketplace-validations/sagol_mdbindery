@@ -85,13 +85,13 @@ metadata:
   rights: CC BY 4.0
 ```
 
-Everything else is either a default or inferred (see [What is inferred](#what-is-inferred-when-keys-are-missing)). Leave `identifier:` empty on its own line: the first build fills it in (see [The identifier](#the-identifier)).
+Everything else is either a default or inferred (see [What is inferred](#what-is-inferred-when-keys-are-missing)). Leave `identifier:` empty on its own line: the first EPUB build fills it in (see [The identifier](#the-identifier)).
 
 ## Top-level keys
 
 | Key | Type | Default | Allowed values | Meaning |
 |---|---|---|---|---|
-| `slug` | text | inferred from the title | letters (any script), digits, `.`, `-`, `_`; does not start with `.` or `-`; no `..` | Base name of the output files: `<slug>.epub` and `<slug>-cover.jpg`. |
+| `slug` | text | inferred from the title | letters (any script), digits, `.`, `-`, `_`; does not start with `.` or `-`; no `..` | Base name of `<slug>.epub`, optional `<slug>.pdf`, and `<slug>-cover.jpg`. |
 | `source_dir` | path | the book folder given on the command line, else the configuration file's folder | an existing folder | Folder with the Markdown files, relative to the configuration file. |
 | `output_dir` | path | `dist` | any path | Output folder, relative to the configuration file. `mdbindery build -o DIR` overrides it. |
 | `source_url` | URL | `""` | starts with `http://` or `https://`; a missing trailing `/` is added | Web address of the online copy of the book folder. See [source_url](#source_url). |
@@ -100,7 +100,7 @@ Everything else is either a default or inferred (see [What is inferred](#what-is
 | `files` | list | inferred | | Reading order and per-file settings. See [files](#files). |
 | `options` | mapping | see [options](#options) | | Conversion, layout, and validation settings. |
 
-`output_dir` receives `<slug>.epub`, `<slug>-cover.jpg` (the full-size cover for store uploads), and a `reports/` folder with `build.json`, `build.log`, `epubcheck.json`, and the Ace report in `ace/`. A build replaces only those report files; anything else you keep in `reports/` stays.
+For the default EPUB build, `output_dir` receives `<slug>.epub`, `<slug>-cover.jpg` (the full-size cover for store uploads), and a `reports/` folder with `build.json`, `build.log`, `epubcheck.json`, and the Ace report in `ace/`. A build replaces only those report files; anything else you keep in `reports/` stays. PDF writes `<slug>.pdf` and `reports/pdf/{build.json,build.log}`; both formats share the cover image.
 
 ### source_url
 
@@ -138,7 +138,7 @@ Without `source_url`, a link to an existing file outside the book is removed and
 | `subtitle` | text | `""` | | Subtitle, written as a second `dc:title` of type subtitle and shown on the title page and the generated cover. |
 | `authors` | list of text, or one text | `[]` | a single string becomes a one-item list | Authors, each written as `dc:creator` with the author role. |
 | `lang` | language tag | `en-US`, or inferred | `en-US`, `ru`, `de`, ...; quote codes YAML reads as booleans (`lang: 'no'`) | Book language (`dc:language`). It drives hyphenation, the reader's dictionary, and the default accessibility summary. |
-| `identifier` | text | `""` | `~` and `null` count as empty | Permanent identifier. When empty, the first build generates a `urn:uuid:` and writes it into this key. |
+| `identifier` | text | `""` | `~` and `null` count as empty | Permanent identifier. When empty, the first EPUB build generates a `urn:uuid:` and writes it into this key. |
 | `date` | `git` or a date | `git` | `git`, `YYYY`, `YYYY-MM`, or `YYYY-MM-DD`, and a real calendar date (`2026-02-30` is an error); unquoted YAML dates are accepted | Publication date (`dc:date`). |
 | `rights` | text | `""`, or inferred from a license file | | Rights statement (`dc:rights`), for example `CC BY 4.0` or `© 2026 Jane Doe. All rights reserved.` |
 | `publisher` | text | `""` | | Publisher (`dc:publisher`). Omitted when empty. |
@@ -154,6 +154,8 @@ Metadata is written literally: Markdown or HTML in a title or description (`*`, 
 The timestamps inside the EPUB archive come from the last git commit, else from a fixed `date` in `YYYY-MM-DD` form, else from the newest source file; dates before 1980 become 1980, the earliest date a zip file can store. This is what makes two builds of the same commit byte-identical.
 
 ### The identifier
+
+Applies to EPUB. PDF export neither generates nor saves this value.
 
 Stores and reading apps use the identifier to recognize a new version of a book they already have, so it must stay the same for the life of the book.
 
@@ -173,14 +175,14 @@ You can also set the identifier yourself. A value starting with `urn:uuid:` is w
 | Key | Type | Default | Allowed values | Meaning |
 |---|---|---|---|---|
 | `image` | path | `""`, or inferred | an image file; relative to the configuration file when set here | Cover image. JPEG or PNG at 1600x2560 px is best. |
-| `embed_height` | whole number (px) | `1000` | 200 to 10000 | Height of the copy embedded in the EPUB. Larger covers are scaled down to this height. |
+| `embed_height` | whole number (px) | `1000` | 200 to 10000 | Height of the cover copy used in EPUB and PDF. Larger covers are scaled down to this height. |
 | `background` | color | `#1d2330` | `#rgb` or `#rrggbb`, in quotes | Background of the generated cover. |
 | `foreground` | color | `#f2efe6` | `#rgb` or `#rrggbb`, in quotes | Text color of the generated cover. |
 | `accent` | color | `#c8643b` | `#rgb` or `#rrggbb`, in quotes | Color of the horizontal band on the generated cover. |
 
 Write colors in quotes (`background: "#1d2330"`): without them YAML reads everything after `#` as a comment, and the empty value is a configuration error.
 
-The cover image may be in any format Pillow can read. mdbindery applies its EXIF rotation, flattens transparency onto white, and converts it to an RGB JPEG. The full-size copy goes to `<output_dir>/<slug>-cover.jpg` for store uploads, and a copy scaled to `embed_height` goes into the EPUB. Without an image, mdbindery draws a 1600x2560 typographic cover with the title, subtitle, and authors in the three colors. Cover checks are MB410 to MB412; the size rules are in [book-structure.md](book-structure.md#the-cover).
+The cover image may be in any format Pillow can read. mdbindery applies its EXIF rotation, flattens transparency onto white, and converts it to an RGB JPEG. The full-size copy goes to `<output_dir>/<slug>-cover.jpg` for store uploads, and a copy scaled to `embed_height` goes into either book format. Without an image, mdbindery draws a 1600x2560 typographic cover with the title, subtitle, and authors in the three colors. Cover checks are MB410 to MB412; the size rules are in [book-structure.md](book-structure.md#the-cover).
 
 ## files
 
@@ -299,12 +301,12 @@ Generated alt text is `<prefix>: <title>` when the chart has a `title` line (or 
 |---|---|---|---|---|
 | `css` | path | `""` (the built-in `epub.css`) | an existing file | Stylesheet that replaces the built-in one. |
 | `extra_css` | path | `""` | an existing file | Stylesheet appended after the main one, for adjusting a few rules. |
-| `embed_fonts` | list of paths | `[]` | existing files | Font files to embed in the EPUB. |
+| `embed_fonts` | list of paths | `[]` | existing files | Font files to embed in EPUB or stage for PDF. PDF CSS must reference the configured path; see [PDF font handling](pdf.md#page-settings). |
 | `highlight_style` | text | `monochrome` | `pygments`, `tango`, `espresso`, `zenburn`, `kate`, `monochrome`, `breezedark`, `haddock`, or `none` | Code highlighting style, passed to pandoc as `--syntax-highlighting`. An empty value means `none`. |
 
 The three path keys are relative to the configuration file, and a missing file is a configuration error (`options.css: file not found: ...`). `highlight_style` must consist of letters, digits, `-`, and `_`; a name pandoc does not know passes that test and then stops the build (`Unknown highlight-style`).
 
-Embedded fonts end up in the EPUB's `fonts/` folder; refer to them from `extra_css`:
+For EPUB, embedded fonts end up in its `fonts/` folder; refer to them from `extra_css`:
 
 ```css
 @font-face { font-family: "Literata"; src: url("../fonts/Literata-Regular.ttf"); }
@@ -508,7 +510,7 @@ metadata:
   subtitle: Power, water, and people for the first thousand days
   authors: [Jane Doe]
   lang: en-US
-  # empty on purpose: the first build writes a permanent urn:uuid here
+  # empty on purpose: the first EPUB build writes a permanent urn:uuid here
   identifier:
   date: git
   rights: Text licensed under CC BY 4.0
@@ -628,5 +630,7 @@ cd books/mars-colony-epub && mdbindery build
 If the identifier is left empty here, the build writes it into this external file, not into the book repository.
 
 ## PDF page settings
+
+The word-count tolerance keys also control PDF text checks; PDF compares extracted words with generated HTML for the whole book. `epubcheck`, `ace`, `ace_waivers`, `accessibility_summary` and `conformance_claim` apply only to EPUB. PDF uses title, subtitle, authors, language, date and description; it does not generate an identifier or reuse EPUB accessibility claims.
 
 `options.pdf` applies only to `build --format pdf`. Defaults: `page_size: A4`, `margin_mm: 20`, `page_numbers: true`. Page sizes: `A4` or `Letter`; margins: 10 to 40 mm. See [PDF export](pdf.md) for examples, font handling and validation limits. EPUB remains the default output.

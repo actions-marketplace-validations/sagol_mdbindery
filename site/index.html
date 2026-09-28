@@ -16,8 +16,8 @@
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="theme-color" content="#111110">
 
-  <title>mdbindery: Markdown chapters to EPUB 3</title>
-  <meta name="description" content="Build EPUB 3 ebooks from Markdown chapters or mdBook projects, run configured validation checks, and review the results.">
+  <title>mdbindery: Markdown chapters to EPUB and PDF</title>
+  <meta name="description" content="Build EPUB 3 ebooks or paginated PDFs from Markdown chapters and mdBook projects. EPUB is the default; unreleased PDF export requires a source install with the pdf extra.">
   <meta name="keywords" content="mdbindery, markdown to epub, github to epub, epub 3 generator, mdbook to epub, epubcheck cli, daisy ace accessibility, pandoc epub builder, reproducible epub, ai agent skill epub">
   <meta name="author" content="Taras Baranyuk">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
@@ -34,21 +34,21 @@
   <!-- Open Graph / Social Sharing -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="mdbindery">
-  <meta property="og:title" content="mdbindery: Markdown chapters to EPUB 3">
-  <meta property="og:description" content="Build EPUB 3 ebooks from Markdown chapters or mdBook projects, run configured validation checks, and review the results.">
+  <meta property="og:title" content="mdbindery: Markdown chapters to EPUB and PDF">
+  <meta property="og:description" content="Build EPUB 3 ebooks or paginated PDFs from Markdown chapters and mdBook projects. EPUB is the default; unreleased PDF export requires a source install with the pdf extra.">
   <meta property="og:url" content="https://sagol.github.io/mdbindery/">
   <meta property="og:image" content="https://sagol.github.io/mdbindery/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="mdbindery commands for checking Markdown chapters and building EPUB 3 ebooks">
+  <meta property="og:image:alt" content="mdbindery commands for building EPUB ebooks and optional PDFs from Markdown">
   <meta property="og:locale" content="en_US">
 
   <!-- Twitter / X Card -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="mdbindery: Markdown chapters to EPUB 3">
-  <meta name="twitter:description" content="Turn Markdown chapters into EPUB 3, run configured EPUBCheck and DAISY Ace checks, and review validation reports.">
+  <meta name="twitter:title" content="mdbindery: Markdown chapters to EPUB and PDF">
+  <meta name="twitter:description" content="Build EPUB 3 ebooks or paginated PDFs from Markdown chapters and mdBook projects. EPUB is the default; unreleased PDF export requires a source install with the pdf extra.">
   <meta name="twitter:image" content="https://sagol.github.io/mdbindery/og-image.png">
-  <meta name="twitter:image:alt" content="mdbindery commands for checking Markdown chapters and building EPUB 3 ebooks">
+  <meta name="twitter:image:alt" content="mdbindery commands for building EPUB ebooks and optional PDFs from Markdown">
 
   <link rel="stylesheet" href="styles.css">
 
@@ -62,7 +62,7 @@
         "@id": "https://sagol.github.io/mdbindery/#website",
         "url": "https://sagol.github.io/mdbindery/",
         "name": "mdbindery",
-        "description": "Build EPUB 3 ebooks from Markdown chapters or mdBook projects, run configured validation checks, and review the results.",
+        "description": "Build EPUB 3 ebooks or paginated PDFs from Markdown chapters and mdBook projects. EPUB is the default; unreleased PDF export requires a source install with the pdf extra.",
         "inLanguage": "en-US"
       },
       {
@@ -90,11 +90,13 @@
         },
         "featureList": [
           "Converts GitHub Markdown repositories and mdBook projects into EPUB 3 ebooks",
+          "Exports paginated PDFs from source installations with the pdf extra; unreleased in version 0.1.1",
           "Resolves cross-file relative links, GitHub heading slugs, and custom HTML anchors",
           "Transforms invisible numeric reference definitions [1] into linked reference lists",
           "Renders Mermaid diagrams to PNG with automatic alt text",
           "Converts wide tables into phone-readable row cards for configured files",
-          "Runs configured validation gates (links, images, charts, includes, W3C EPUBCheck 5.4.0, DAISY Ace 1.4.6, and per-file word count) and records pass, warn, fail, or skipped states in reports/build.json; includes is recorded only on failure",
+          "Runs configured EPUB validation gates (links, images, charts, includes, W3C EPUBCheck 5.4.0, DAISY Ace 1.4.6, and per-file word count) and records pass, warn, fail, or skipped states in reports/build.json; includes is recorded only on failure",
+          "PDF checks staged resources, internal links and extracted text; reports use reports/pdf/",
           "Produces byte-identical EPUB builds when built from the same commit with the same tools, fonts, and saved metadata.identifier",
           "Ships SKILL.md files for AI coding agents (Claude Code, Codex, Cursor, Antigravity)"
         ]
@@ -160,6 +162,14 @@
               "@type": "Answer",
               "text": "The installers need no preinstalled Python, Java, or Node.js and no administrator rights. Linux and macOS need Bash, curl, tar, and standard checksum utilities; Windows needs PowerShell. Downloaded uv, pandoc, EPUBCheck, and Node.js binaries are checked against pinned SHA-256 checksums. Java uses a suitable installed runtime or the latest Temurin 21 build, verified with the checksum returned by its API. Mermaid-cli and Ace have pinned top-level npm versions; their dependencies resolve during installation. Once the tools are installed, local builds work offline."
             }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I export PDF as well as EPUB?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes, from a source install with the pdf extra and Node/Puppeteer tools. Use mdbindery build --format pdf. EPUB remains the default. PDF reports live in reports/pdf/; EPUBCheck and Ace apply only to EPUB. PDF support is unreleased and is not included in version 0.1.1."
+            }
           }
         ]
       }
@@ -208,16 +218,18 @@
         <div class="hero-eyebrow">
           <span>CLI &amp; GitHub Action</span>
           <span>·</span>
-          <span>EPUB 3 + EPUBCheck 5.4.0 + DAISY Ace 1.4.6</span>
+          <span>EPUB 3 · Optional PDF export</span>
           <span>·</span>
           <span>MIT License</span>
         </div>
 
-        <h1 id="hero-heading">Build and check EPUB 3 ebooks from Markdown.</h1>
+        <h1 id="hero-heading">Build EPUB ebooks and PDFs from Markdown.</h1>
 
         <p class="hero-lead">
-          <strong>mdbindery</strong> turns a folder of Markdown chapters or an mdBook project into an EPUB 3 ebook. It converts chapter links, citations, images, Mermaid diagrams, and wide tables while keeping the source readable on GitHub. Configured checks include W3C EPUBCheck and DAISY Ace. Review their results, including warnings and skipped checks, before publishing.
+          <strong>mdbindery</strong> turns Markdown chapters or mdBook projects into EPUB 3 ebooks or paginated PDFs. Both formats share chapter links, citations, images, Mermaid diagrams and table conversion. EPUB runs EPUBCheck and DAISY Ace; PDF checks resources, links and extracted text. Review reports and layout before sharing.
         </p>
+
+        <p>EPUB remains the default. PDF export is unreleased and needs a source install with the <code>pdf</code> extra. <a href="#pdf-install">Set up PDF export</a>.</p>
 
         <div class="hero-cta-row">
           <a class="btn btn-primary" href="#install">Install mdbindery</a>
@@ -248,7 +260,10 @@ mdbindery: writing-a-book-in-markdown (5 files)
   <span class="cmd-ok">EPUBCheck: no messages</span>
   <span class="cmd-ok">Ace: 0 violation(s), 0 blocking</span>
   <span class="cmd-ok">word count: every file within 2% or 25 words of its source</span>
-<span class="cmd-ok">BUILD OK</span></code></pre>
+<span class="cmd-ok">BUILD OK</span>
+
+<span class="cmd-comment"># 3. Export PDF after installing PDF dependencies</span>
+<span class="cmd-prompt">$ </span>mdbindery build examples/sample-book --format pdf</code></pre>
           </div>
 
           <aside class="ereader-card" aria-label="Rendered EPUB 3 phone preview illustration">
@@ -285,7 +300,7 @@ mdbindery: writing-a-book-in-markdown (5 files)
           <span class="section-eyebrow">Capabilities</span>
           <h2 id="features-heading" class="section-title">Keep your Markdown book workflow</h2>
           <p class="section-desc">
-            Write and review chapters on GitHub. mdbindery converts the book structure, embeds local assets, and adds EPUB accessibility metadata.
+            Write and review chapters on GitHub. Both formats share source preparation and local assets; output checks and layout depend on the selected format.
           </p>
         </div>
 
@@ -294,7 +309,7 @@ mdbindery: writing-a-book-in-markdown (5 files)
             <span class="feature-tag">Chapter links</span>
             <h3>Chapter links and anchors</h3>
             <p>
-              Relative links between chapters, links to headings in other files, <code>.html</code> links pointing to <code>.md</code> chapters, and custom <code>&lt;a id&gt;</code> anchors become internal EPUB links. Any broken internal target fails the build when <code>strict_links</code> is enabled.
+              Relative links between chapters, links to headings in other files, <code>.html</code> links pointing to <code>.md</code> chapters, and custom <code>&lt;a id&gt;</code> anchors become internal book links. Any broken internal target fails the build when <code>strict_links</code> is enabled.
             </p>
           </article>
 
@@ -318,7 +333,7 @@ mdbindery: writing-a-book-in-markdown (5 files)
             <span class="feature-tag">Diagrams and math</span>
             <h3>Mermaid diagrams and MathML</h3>
             <p>
-              Fenced <code>```mermaid</code> diagrams render to PNG images via <code>mermaid-cli</code> with automatic alt text extracted from the chart labels. TeX formulas convert to native EPUB 3 MathML.
+              Fenced <code>```mermaid</code> diagrams render to PNG images via <code>mermaid-cli</code> with automatic alt text extracted from the chart labels. TeX formulas convert to MathML for EPUB readers and Chromium PDF rendering.
             </p>
           </article>
 
@@ -334,7 +349,7 @@ mdbindery: writing-a-book-in-markdown (5 files)
             <span class="feature-tag">GitHub formatting</span>
             <h3>GitHub formatting and HTML</h3>
             <p>
-              GitHub alerts (<code>&gt; [!NOTE]</code>), task lists, monochrome code syntax highlighting, and supported raw README HTML (<code>&lt;br&gt;</code>, <code>&lt;sup&gt;</code>, <code>&lt;img&gt;</code>, <code>&lt;p align&gt;</code>, <code>&lt;details&gt;</code>) become valid EPUB 3 XHTML; unsupported tags are removed and reported.
+              GitHub alerts (<code>&gt; [!NOTE]</code>), task lists, monochrome code syntax highlighting, and supported raw README HTML (<code>&lt;br&gt;</code>, <code>&lt;sup&gt;</code>, <code>&lt;img&gt;</code>, <code>&lt;p align&gt;</code>, <code>&lt;details&gt;</code>) pass through shared cleanup for EPUB and PDF; unsupported tags are removed and reported.
             </p>
           </article>
 
@@ -347,8 +362,14 @@ mdbindery: writing-a-book-in-markdown (5 files)
           </article>
 
           <article class="feature-card">
+            <span class="feature-tag">PDF export</span>
+            <h3>Paginated PDF</h3>
+            <p>Choose A4 or Letter pages, margins and page numbers with <code>options.pdf</code>. Export uses installed Chromium and shared book styles with print overrides. Inspect pagination and glyphs; PDF/A, PDF/UA and print-production readiness are not claimed.</p>
+          </article>
+
+          <article class="feature-card">
             <span class="feature-tag">Deterministic</span>
-            <h3>Reproducible builds</h3>
+            <h3>Reproducible EPUB builds</h3>
             <p>
               Building the same Git commit twice with the same tools, fonts, and a saved <code>metadata.identifier</code> produces byte-identical <code>.epub</code> files. EPUB metadata includes a publication identifier and <code>schema.org</code> accessibility information.
             </p>
@@ -434,6 +455,17 @@ mdbindery doctor</code></pre>
             </div>
           </div>
         </div>
+        <div id="pdf-install">
+          <h3>Optional PDF export from source</h3>
+          <p>Released version <code>0.1.1</code> predates PDF support. From a source checkout containing this feature, run these commands at the repository root in your Python environment:</p>
+          <div class="code-block-wrap">
+            <button class="copy-btn" type="button" data-copy-target="code-install-pdf">Copy</button>
+            <pre><code id="code-install-pdf">python -m pip install '.[pdf]'
+mdbindery install-tools
+mdbindery build examples/sample-book --format pdf</code></pre>
+          </div>
+          <p>PDF needs Node.js, Puppeteer and pypdf. An install with <code>--no-node</code> cannot export PDF. <code>doctor</code> checks the EPUB toolchain; it does not verify pypdf. See the <a href="https://github.com/sagol/mdbindery/blob/main/docs/pdf.md" rel="noopener noreferrer">PDF guide</a>.</p>
+        </div>
         <p id="tool-verification">Downloaded uv, pandoc, EPUBCheck, and Node.js binaries are checked against pinned SHA-256 checksums. Java uses a suitable installed runtime or the latest Temurin 21 build, verified with the checksum returned by its API. Mermaid-cli and Ace have pinned top-level npm versions; their dependencies resolve during installation.</p>
       </div>
     </section>
@@ -445,16 +477,16 @@ mdbindery doctor</code></pre>
       <div class="container">
         <div class="section-header">
           <span class="section-eyebrow">Build checks</span>
-          <h2 id="pipeline-heading" class="section-title">7 validation gates with structured reporting</h2>
+          <h2 id="pipeline-heading" class="section-title">Validation for each output format</h2>
           <p class="section-desc">
-            <code>mdbindery build</code> writes the EPUB and evaluates its validation gates, recording reported gate states (<code>pass</code>, <code>warn</code>, <code>fail</code>, or <code>skipped</code>) in <code>dist/reports/build.json</code>. The <code>includes</code> entry appears only on failure. If any gate fails, the command exits with status <code>1</code>.
+            Both formats check links, images, charts and includes. EPUB adds EPUBCheck, Ace and per-chapter word counts; PDF adds resource, internal-link and extracted-text checks. Reports use <code>dist/reports/build.json</code> for EPUB or <code>dist/reports/pdf/build.json</code> for PDF. The <code>includes</code> entry appears only on failure. A failed gate returns status <code>1</code>.
           </p>
         </div>
 
         <div class="gates-grid">
           <div class="gate-card">
             <div class="gate-header">
-              <span class="gate-name">1. links</span>
+              <span class="gate-name">links · Both</span>
               <span class="badge badge-pass">Gate</span>
             </div>
             <p>Fails on unresolved internal chapter anchors or links to missing files when <code>options.strict_links</code> is <code>true</code> (default); warns when <code>false</code>.</p>
@@ -462,7 +494,7 @@ mdbindery doctor</code></pre>
 
           <div class="gate-card">
             <div class="gate-header">
-              <span class="gate-name">2. images</span>
+              <span class="gate-name">images · Both</span>
               <span class="badge badge-pass">Gate</span>
             </div>
             <p>Fails when an image is missing, remote (<code>http://</code>, <code>https://</code>), empty, or (for untrusted repositories checked by URL) outside the repository checkout.</p>
@@ -470,7 +502,7 @@ mdbindery doctor</code></pre>
 
           <div class="gate-card">
             <div class="gate-header">
-              <span class="gate-name">3. charts</span>
+              <span class="gate-name">charts · Both</span>
               <span class="badge badge-pass">Gate</span>
             </div>
             <p>Fails when a <code>```mermaid</code> block fails to render. Warns (using chart placeholders) if <code>mermaid-cli</code> is missing while <code>options.mermaid</code> is <code>png</code>.</p>
@@ -478,7 +510,7 @@ mdbindery doctor</code></pre>
 
           <div class="gate-card">
             <div class="gate-header">
-              <span class="gate-name">4. includes</span>
+              <span class="gate-name">includes · Both</span>
               <span class="badge badge-pass">Gate</span>
             </div>
             <p>Reports failed <code>mdBook</code> <code>{{#include}}</code> expansions (missing file, cycle, or size limit). The <code>includes</code> gate appears in <code>build.json</code> only with <code>result: "fail"</code>. It is omitted when no include directive fails; no <code>pass</code> entry is emitted.</p>
@@ -486,7 +518,7 @@ mdbindery doctor</code></pre>
 
           <div class="gate-card">
             <div class="gate-header">
-              <span class="gate-name">5. epubcheck</span>
+              <span class="gate-name">epubcheck · EPUB</span>
               <span class="badge badge-pass">Gate</span>
             </div>
             <p>Runs W3C <code>EPUBCheck v5.4.0</code> (unless <code>options.epubcheck: false</code>). Fails on any <code>FATAL</code> or <code>ERROR</code> message or if EPUBCheck cannot run.</p>
@@ -494,7 +526,7 @@ mdbindery doctor</code></pre>
 
           <div class="gate-card">
             <div class="gate-header">
-              <span class="gate-name">6. ace</span>
+              <span class="gate-name">ace · EPUB</span>
               <span class="badge badge-pass">Gate</span>
             </div>
             <p>Runs <code>DAISY Ace 1.4.6</code> (skipped with <code>--no-ace</code> or <code>options.ace: false</code>; warns if Ace is not installed). Fails on unwaived <code>critical</code> or <code>serious</code> violations.</p>
@@ -502,11 +534,16 @@ mdbindery doctor</code></pre>
 
           <div class="gate-card">
             <div class="gate-header">
-              <span class="gate-name">7. wordcount</span>
+              <span class="gate-name">wordcount · EPUB</span>
               <span class="badge badge-pass">Gate</span>
             </div>
             <p>Fails if any chapter's EPUB word count differs from its prepared Markdown source by more than <code>2%</code> (<code>wordcount_tolerance</code>) and <code>25 words</code> (<code>wordcount_min_words</code>).</p>
           </div>
+        </div>
+
+        <div class="gate-card">
+          <div class="gate-header"><span class="gate-name">pdf · PDF</span><span class="badge badge-pass">Gate</span></div>
+          <p>Checks loaded resources and internal links, then compares extracted PDF text with generated HTML using the configured word-count tolerances. A readable PDF with failed text checks remains available for inspection. Renderer errors preserve an older PDF. Scripts are disabled and unstaged resource requests are blocked. PDF never automatically disables the browser sandbox.</p>
         </div>
 
         <div class="table-scroll">
@@ -536,7 +573,7 @@ mdbindery doctor</code></pre>
               </tr>
               <tr>
                 <td><code>mdbindery build [path]</code></td>
-                <td>Build <code>dist/&lt;slug&gt;.epub</code> and <code>dist/reports/build.json</code>, running configured validation gates. Supports <code>-c CONFIG</code>, <code>-o OUT</code>, <code>--no-ace</code>, <code>--keep-work</code>, <code>-q</code>.</td>
+                <td>Build EPUB by default or select <code>--format pdf</code>. PDF writes <code>dist/&lt;slug&gt;.pdf</code> and reports under <code>dist/reports/pdf/</code>. Supports <code>--format epub|pdf</code>, <code>-c CONFIG</code>, <code>-o OUT</code>, <code>--no-ace</code> (EPUB only), <code>--keep-work</code>, <code>-q</code>.</td>
                 <td><code>0</code> BUILD OK · <code>1</code> gate failed · <code>2</code> config/build error · <code>3</code> internal error</td>
               </tr>
               <tr>
@@ -609,7 +646,7 @@ Then run `mdbindery check . --json /tmp/mdb-check.json --report /tmp/mdb-check.m
           </div>
           <div class="endpoint-item">
             <strong><a href="llms-full.txt">/llms-full.txt</a></strong>
-            <span>Single-file full reference: CLI flags, YAML schema, 7 gates, and 59 MB codes.</span>
+            <span>Single-file reference: CLI flags, YAML schema, EPUB/PDF gates and 59 MB codes.</span>
           </div>
           <div class="endpoint-item">
             <strong><a href="agents.json">/agents.json</a></strong>
@@ -1034,7 +1071,7 @@ Then run `mdbindery check . --json /tmp/mdb-check.json --report /tmp/mdb-check.m
         <div class="split-grid">
           <div class="code-window" aria-label="Example mdbindery.yaml configuration">
             <div class="code-window-bar">
-              <span>mdbindery.yaml (from examples/sample-book)</span>
+              <span>Sample book configuration with PDF defaults</span>
               <span>YAML</span>
             </div>
             <pre><code>slug: writing-a-book-in-markdown
@@ -1069,6 +1106,10 @@ files:
 options:
   citations: refdefs
   toc_depth: 2
+  pdf:
+    page_size: A4
+    margin_mm: 20
+    page_numbers: true
   cards:
     files: [appendix-a-checklist.md]
     min_columns: 9
@@ -1084,12 +1125,16 @@ options:
 cd examples/sample-book
 mdbindery check . --build
 mdbindery build
+# After installing PDF dependencies
+mdbindery build --format pdf
 mdbindery preview dist/writing-a-book-in-markdown.epub shots</code></pre>
             </div>
 
+            <p>PDF writes <code>dist/&lt;slug&gt;.pdf</code> and <code>dist/reports/pdf/{build.json,build.log}</code>. EPUB and its reports remain available. The cover image is shared; PDF reports add Chromium/Puppeteer versions. PDF bytes are not guaranteed reproducible. <code>preview</code> accepts EPUB only.</p>
+
             <h3>Build files and provenance</h3>
             <p>
-              Completed builds write <code>dist/&lt;slug&gt;.epub</code>, <code>dist/&lt;slug&gt;-cover.jpg</code>, <code>dist/reports/build.json</code>, and <code>dist/reports/build.log</code>, plus <code>dist/reports/epubcheck.json</code> and <code>dist/reports/ace/report.json</code> (and <code>report.html</code>) when those validators produce reports. A build that stops early may leave only failure diagnostics. <code>build.json</code> records <code>provenance</code> (<code>mdbindery</code>, <code>python</code>, <code>pandoc</code> major.minor, <code>epubcheck</code>, and <code>ace</code> versions, source Git commit, and effective options), per-stage <code>timings</code>, and gate states (<code>pass</code>, <code>warn</code>, <code>fail</code>, <code>skipped</code>).
+              Completed EPUB builds write <code>dist/&lt;slug&gt;.epub</code>, <code>dist/&lt;slug&gt;-cover.jpg</code>, <code>dist/reports/build.json</code>, and <code>dist/reports/build.log</code>, plus <code>dist/reports/epubcheck.json</code> and <code>dist/reports/ace/report.json</code> (and <code>report.html</code>) when those validators produce reports. A build that stops early may leave only failure diagnostics. <code>build.json</code> records <code>provenance</code> (<code>mdbindery</code>, <code>python</code>, <code>pandoc</code> major.minor, <code>epubcheck</code>, and <code>ace</code> versions, source Git commit, and effective options), per-stage <code>timings</code>, and gate states (<code>pass</code>, <code>warn</code>, <code>fail</code>, <code>skipped</code>).
             </p>
           </div>
         </div>
@@ -1112,7 +1157,7 @@ mdbindery preview dist/writing-a-book-in-markdown.epub shots</code></pre>
         <div class="docs-grid">
           <a class="doc-link-card" href="https://github.com/sagol/mdbindery/blob/main/docs/tutorial.md" rel="noopener noreferrer">
             <h3>Tutorial</h3>
-            <p>Build and check an EPUB 3 ebook from a Markdown repository, with commands and example output.</p>
+            <p>Prepare a Markdown book, build and inspect EPUB, then optionally export PDF.</p>
           </a>
 
           <a class="doc-link-card" href="https://github.com/sagol/mdbindery/blob/main/docs/book-structure.md" rel="noopener noreferrer">
@@ -1130,8 +1175,13 @@ mdbindery preview dist/writing-a-book-in-markdown.epub shots</code></pre>
             <p>How <code>mdbindery check</code> analyzes local folders and URLs, JSON report schema, and all 59 MB codes.</p>
           </a>
 
+          <a class="doc-link-card" href="https://github.com/sagol/mdbindery/blob/main/docs/pdf.md" rel="noopener noreferrer">
+            <h3>PDF export</h3>
+            <p>Install dependencies, set page size and margins, configure fonts and review PDF checks and layout limits.</p>
+          </a>
+
           <a class="doc-link-card" href="https://github.com/sagol/mdbindery/blob/main/docs/building.md" rel="noopener noreferrer">
-            <h3>Builds and validation gates</h3>
+            <h3>EPUB builds and validation</h3>
             <p>The conversion pipeline, outputs, validation gates, reproducibility, covers, previewing, and store uploads.</p>
           </a>
 
@@ -1163,7 +1213,10 @@ mdbindery preview dist/writing-a-book-in-markdown.epub shots</code></pre>
           <h2 id="faq-heading" class="section-title">Frequently asked questions</h2>
         </div>
 
+
+
         <div class="faq-list">
+        <details class="faq-item"><summary>Can I export PDF as well as EPUB?</summary><p>Yes, from a source install with the pdf extra and Node/Puppeteer tools. Use mdbindery build --format pdf. EPUB remains the default. PDF reports live in reports/pdf/; EPUBCheck and Ace apply only to EPUB. PDF support is unreleased and is not included in version 0.1.1.</p></details>
           <details class="faq-item" open>
             <summary>What makes mdbindery different from running pandoc directly?</summary>
             <p>

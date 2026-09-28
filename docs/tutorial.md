@@ -1,5 +1,7 @@
 # Tutorial: from a Markdown repository to a validated EPUB
 
+This walkthrough covers the default EPUB build, including EPUBCheck, Ace and EPUB screenshots. To export the prepared book as PDF, use the [optional PDF step](#optional-pdf-export); source fixes apply to both formats.
+
 This tutorial takes a small book repository in the state most GitHub books are in, and turns it into an EPUB that passes EPUBCheck and the DAISY Ace accessibility check. You will run every mdbindery command on the way: `doctor`, `check`, `init`, `check --build`, `build`, and `preview`, and fix each problem the tool reports. At the end you check a real public repository by its URL.
 
 The example book is "Backyard Astronomy", a three-chapter field guide. You can follow along with your own repository instead; the steps are the same.
@@ -1211,3 +1213,14 @@ To run the checks on every push, call `mdbindery check . --build -q --report che
 - [checking.md](checking.md): every check code and its fix
 - [building.md](building.md): the build pipeline, the gates, and store uploads in more detail
 - [troubleshooting.md](troubleshooting.md): what to do when a gate fails
+
+
+## Optional PDF export
+
+After preparing the chapters, install the [PDF dependencies](pdf.md#install-pdf-dependencies), then run from the book folder:
+
+```sh
+mdbindery build --format pdf
+```
+
+This writes `dist/backyard-astronomy.pdf` and `dist/reports/pdf/`. EPUB and its reports remain available. Set page size, margins and page numbers under `options.pdf`; see [PDF settings and limits](pdf.md). Open the PDF in a PDF viewer to inspect pagination, links, tables and images. `mdbindery preview` accepts EPUB only. PDF does not run EPUBCheck or Ace, generate an identifier, or promise reproducible bytes.

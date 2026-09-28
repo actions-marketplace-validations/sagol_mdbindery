@@ -1,5 +1,7 @@
 # Checking a book
 
+`check` uses the shared source rules, but its diagnostics and `--build` trial remain EPUB-oriented. It has no PDF format switch and does not test PDF rendering. After fixing source findings, run `mdbindery build BOOK --format pdf` to check PDF output; see [PDF export](pdf.md).
+
 `mdbindery check` is a dry run. It reads a book from a local folder or a Git repository, reports every problem it can find with a code, file, line, and suggested fix, and can run a trial build with the same gates as `mdbindery build`. It never changes the book's files, never writes into its configuration, and does not write `dist/`.
 
 ```
@@ -537,7 +539,7 @@ Fix: put the chapters in the book folder or in `chapters/`, or list them under `
 
 Info. Message: `no mdbindery.yaml: using an inferred configuration`. There is no `mdbindery.yaml` or `mdbindery.yml` in the book folder and no `-c`, so the whole configuration is inferred ([configuration.md](configuration.md#what-is-inferred-when-keys-are-missing)).
 
-The inferred reading order and metadata may be wrong, and without a file the generated identifier cannot be saved, so every build gets a new one. The report ends with a suggested configuration.
+The inferred reading order and metadata may be wrong, and without a file the generated identifier cannot be saved, so every EPUB build gets a new one. The report ends with a suggested configuration.
 
 Fix: run `mdbindery init`, then review the title, authors, and file order.
 
@@ -743,9 +745,9 @@ Fix: add a license file, or set `metadata.rights` (`CC BY 4.0`, `© 2026 Jane Do
 
 Info. `metadata.identifier` is empty. Message: `no identifier: a permanent urn:uuid will be generated on the first build`.
 
-The first build generates the identifier and saves it only if the configuration file has an empty `identifier:` line. If it cannot be saved, every build gets a new identifier, and stores treat each upload as a different book ([configuration.md](configuration.md#the-identifier)). Check itself never writes the file.
+The first EPUB build generates the identifier and saves it only if the configuration file has an empty `identifier:` line. If it cannot be saved, every EPUB build gets a new identifier, and stores treat each upload as a different book ([configuration.md](configuration.md#the-identifier)). Check itself never writes the file.
 
-Fix: keep `identifier:` under `metadata:` with no value, and commit the file after the first build.
+Fix: keep `identifier:` under `metadata:` with no value, and commit the file after the first EPUB build.
 
 ### Links
 

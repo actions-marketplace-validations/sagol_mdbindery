@@ -1,5 +1,7 @@
 # Troubleshooting
 
+For PDF failures, start with `reports/pdf/build.json` and `reports/pdf/build.log`. EPUB reports stay under `reports/`. See [PDF export errors](#pdf-export-errors).
+
 When something goes wrong, these four places answer most questions:
 
 1. `mdbindery doctor` shows which tools work and which tool home is in use ([installation.md](installation.md#verifying-the-installation)).
@@ -357,3 +359,15 @@ please report it with the text below: https://github.com/sagol/mdbindery/issues
 ```
 
 The last lines of the traceback follow. Report the problem at the address shown, with the command you ran, the whole message, and `mdbindery doctor` output. If the message makes the cause clear (a path that is not what mdbindery expects, a file it cannot read), you can often work around it until it is fixed.
+
+
+## PDF export errors
+
+- `unrecognized arguments: --format pdf`: installed release lacks PDF support. Use a source checkout containing this feature; version `0.1.1` predates it.
+- `PDF needs pypdf`: install `.[pdf]` from the repository root in the same Python environment as the CLI.
+- Missing Node/Puppeteer: run `mdbindery install-tools` without `--no-node`. `doctor` does not check pypdf.
+- `PDF resources or internal links failed`: check images, anchors and CSS. Browser requests allow only staged assets and data URLs. List CSS fonts in `options.embed_fonts` and reference those exact paths. Remote CSS resources and unstaged files are blocked.
+- Browser sandbox cannot start: PDF does not retry without it. On a trusted CI/container host, explicitly set `MDBINDERY_NO_SANDBOX=1`. See [PDF resource handling](pdf.md#checks-and-failures).
+- `gates.pdf.result: fail`: inspect missing-word counts, fonts and CSS that hides text. The generated PDF remains for inspection; renderer errors preserve an older output instead. Do not increase tolerances merely to hide content loss.
+
+For page settings and visual checks, see [PDF export](pdf.md). EPUB preview does not accept PDF files.

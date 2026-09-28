@@ -1,11 +1,11 @@
 ---
 name: mdbindery
-description: Operate mdbindery, the CLI that turns a folder or GitHub repository of Markdown chapters into a validated EPUB 3. Install it, verify its tools with `mdbindery doctor`, run `mdbindery check` on a local folder or a repository URL, write a config with `mdbindery init`, build with `mdbindery build`, take phone-size screenshots with `mdbindery preview`, and read the check and build reports, the gates (links, images, charts, includes, EPUBCheck, Ace, word count), and the exit codes. Use when the user asks to build an EPUB, make an ebook, export Markdown to EPUB, convert a repo or book folder to an ebook, check whether a repository can become an EPUB, validate an ebook with EPUBCheck or Ace, preview the ebook, or install, update, or troubleshoot mdbindery. When the repository itself needs work (reading order, headings, links, citations, images, tables, HTML), switch to the mdbindery-prepare-repo skill.
+description: Operate mdbindery, the CLI that builds EPUB 3 ebooks or optional PDFs from Markdown chapters. Install it, verify its tools with `mdbindery doctor`, run `mdbindery check` on a local folder or a repository URL, write a config with `mdbindery init`, build with `mdbindery build`, take phone-size screenshots with `mdbindery preview`, and read the check and build reports, the gates (links, images, charts, includes, EPUBCheck, Ace, word count), and the exit codes. Use when the user asks to build an EPUB or PDF, make an ebook, export Markdown to EPUB, convert a repo or book folder to an ebook, check whether a repository can become an EPUB, validate an ebook with EPUBCheck or Ace, preview the ebook, or install, update, or troubleshoot mdbindery. When the repository itself needs work (reading order, headings, links, citations, images, tables, HTML), switch to the mdbindery-prepare-repo skill.
 ---
 
 # Run mdbindery
 
-mdbindery turns a folder or GitHub repository of Markdown chapters (one file per chapter, relative links, local images, `[1]` citations with reference definitions) into an EPUB 3. It validates the result with its own gates (links, images, charts, includes, word count), EPUBCheck, and DAISY Ace. The build fails if any gate fails.
+mdbindery turns a folder or GitHub repository of Markdown chapters (one file per chapter, relative links, local images, `[1]` citations with reference definitions) into EPUB 3 (default) or PDF (`--format pdf`). Both share source checks. EPUB adds EPUBCheck, Ace and per-chapter word counts; PDF checks rendered resources, internal links and extracted text. A failed gate fails the build. PDF support is unreleased; install from source with the `pdf` extra. See the PDF section below.
 
 This skill covers running the tool. Fixing the repository belongs to the `mdbindery-prepare-repo` skill; switch to it as soon as `check` reports problems in the Markdown.
 
@@ -14,7 +14,7 @@ This skill covers running the tool. Fixing the repository belongs to the `mdbind
 - Do not edit the author's Markdown here. Configuration is fine; content fixes follow the ground rules of `mdbindery-prepare-repo`.
 - Never loosen a gate to get a pass: keep `strict_links: true`, `epubcheck: true`, and `ace: true`; leave `wordcount_tolerance` and `wordcount_min_words` alone; add `ace_waivers` only with the author's approval. `--no-ace` is for iterating, not for the final build.
 - Keep build output out of Git: `dist/`, report files, screenshots. Write check reports outside the repository. Commit nothing unless the user asks.
-- The first build writes a permanent identifier into `mdbindery.yaml`. Tell the user: it belongs in the repository with the config and must never change.
+- The first EPUB build writes a permanent identifier into `mdbindery.yaml`. Tell the user: it belongs in the repository with the config and must never change.
 - Ask the user before installing software.
 
 ## Install
@@ -142,13 +142,16 @@ mdbindery init path/to/book
 mdbindery init --force      # rewrite: keeps metadata, identifier, cover, files, and options; old file saved as mdbindery.yaml.bak
 ```
 
-`init` writes the inferred title, language, rights, cover, reading order (with a comment saying where the order came from), and `source_url` from the git remote when it is on GitHub. It leaves `identifier:` empty on its own line; the first build fills it. Exit codes: 0 written; 1 the file exists (without `--force`) or there are no Markdown files; 2 folder not found, or a `config error:` while inferring. With `--force`, an existing config that cannot be loaded is replaced by a fresh one after a warning.
+`init` writes the inferred title, language, rights, cover, reading order (with a comment saying where the order came from), and `source_url` from the git remote when it is on GitHub. It leaves `identifier:` empty on its own line; the first EPUB build fills it. Exit codes: 0 written; 1 the file exists (without `--force`) or there are no Markdown files; 2 folder not found, or a `config error:` while inferring. With `--force`, an existing config that cannot be loaded is replaced by a fresh one after a warning.
 
 ## Build
+
+The default workflow below builds EPUB. For PDF dependencies, separate reports and visual checks, see [Optional PDF output](#optional-pdf-output). `check --build` and `preview` remain EPUB-only.
 
 ```
 mdbindery build                        # the book in the current folder
 mdbindery build path/to/book
+mdbindery build path/to/book --format pdf  # requires PDF dependencies
 mdbindery build path/to/other.yaml     # the path can also be a config file
 mdbindery build -c mdbindery-de.yaml -o out/de
 mdbindery build --no-ace               # skip Ace while iterating
@@ -173,7 +176,7 @@ Each build replaces only these files in `reports/`; other files there are kept.
 
 Exit codes: 0 with `BUILD OK`; 1 with `BUILD FAILED: <gates> (details: .../build.json)`; 2 with `config error: ...` or `build error: ...` on stderr (invalid config, missing pandoc, a listed file not found, a file that is not UTF-8, no Markdown files, an unreadable cover); 3 `internal error: ...` (a bug: report it); 130 interrupted. After a build error that happened once the build started, `reports/build.json` still says which stage stopped (`failed_stage`) and whether the EPUB in `dist/` is stale (`artifact`); read it before rebuilding. Every external tool has a time limit; `build error: <tool> did not finish within N s` on a huge book or slow machine means rerun with `MDBINDERY_TIMEOUT_SCALE=3`.
 
-The first build writes a permanent `urn:uuid` into the empty `identifier:` line (`generated identifier ... (saved in mdbindery.yaml)`). If the config has no `identifier:` line, or there is no config file, the log says `warning: generated identifier ... for this build only`, and every build gets a new identifier: add `identifier:` under `metadata:`.
+The first EPUB build writes a permanent `urn:uuid` into the empty `identifier:` line (`generated identifier ... (saved in mdbindery.yaml)`). If the config has no `identifier:` line, or there is no config file, the log says `warning: generated identifier ... for this build only`, and every EPUB build gets a new identifier: add `identifier:` under `metadata:`.
 
 Builds are reproducible: the same sources give a byte-identical EPUB. Timestamps come from the last git commit, else a fixed `metadata.date`, else the newest source file.
 
@@ -243,4 +246,8 @@ Without a config, mdbindery infers the reading order: from `SUMMARY.md` or anoth
 
 ## Optional PDF output
 
-Use `mdbindery build BOOK --format pdf` after installing the `pdf` Python extra and tools without `--no-node`. EPUB remains default. See `docs/pdf.md` for page settings, resource restrictions and validation limits. PDF reports use `reports/pdf/`; EPUBCheck and Ace apply only to EPUB. Do not claim PDF/A, PDF/UA or print-production readiness.
+PDF support is unreleased; version `0.1.1` lacks it. From the root of a source checkout containing this feature, install `python -m pip install '.[pdf]'` in the CLI's Python environment, then `mdbindery install-tools` without `--no-node`. Run `mdbindery build BOOK --format pdf`.
+
+EPUB remains default. PDF reports use `reports/pdf/`; source config and any existing EPUB reports stay unchanged. Inspect `gates.pdf` and the PDF itself. Page sizes A4/Letter, margins 10–40 mm and page numbers live under `options.pdf`. `doctor` does not check pypdf. `check --build`, `preview`, EPUBCheck and Ace apply only to EPUB.
+
+PDF disables scripts and blocks unstaged resources. Fonts must be declared in `embed_fonts` and referenced by matching CSS paths. PDF never automatically disables the browser sandbox; `MDBINDERY_NO_SANDBOX=1` is an explicit opt-out for trusted CI/container hosts. Renderer errors preserve an older PDF; failed text checks keep the new readable PDF marked failed. See `docs/pdf.md` for details. Do not claim reproducible PDF bytes, PDF/A, PDF/UA or print-production readiness.

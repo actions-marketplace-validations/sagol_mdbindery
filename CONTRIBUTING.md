@@ -24,7 +24,7 @@ pip install -e ".[test]"
 mdbindery install-tools
 ```
 
-The commands below assume the environment is active. `install-tools` puts pandoc, EPUBCheck, Java (if needed), Node.js, mermaid-cli, and Ace into the tool home. To share a tool home between checkouts, or to keep it out of your user folder, set `MDBINDERY_HOME` before running any `mdbindery` command. `mdbindery doctor` shows which tools were found.
+The commands below assume the environment is active. The `test` extra includes pypdf for PDF validation tests. `install-tools` puts pandoc, EPUBCheck, Java (if needed), Node.js, mermaid-cli, and Ace into the tool home. To share a tool home between checkouts, or to keep it out of your user folder, set `MDBINDERY_HOME` before running any `mdbindery` command. `mdbindery doctor` shows which tools were found.
 
 ## Tests
 
@@ -34,13 +34,14 @@ MDBINDERY_REQUIRE_TOOLS=1 python -m pytest    # fails them instead, as CI does
 python -m pytest tests/test_markdown.py       # pure Python, no tools needed
 ```
 
-Without pandoc, only the tests that need no external tool run. With pandoc alone, every test runs except the one EPUBCheck integration test; the other build tests validate with EPUBCheck when it is installed and check content only when it is not. None of them needs Ace. Set `MDBINDERY_REQUIRE_TOOLS=1` before you send a change, so a missing tool cannot turn a failure into a skip.
+Without pandoc, only the tests that need no external tool run. With pandoc alone, EPUB content tests run without EPUBCheck when it is absent. Browser-dependent PDF and preview tests skip without Node/Puppeteer; the dedicated EPUBCheck integration test also skips when its tool is missing. None of them needs Ace. Set `MDBINDERY_REQUIRE_TOOLS=1` before you send a change, so a missing tool cannot turn a failure into a skip.
 
-A build writes into the book (`dist/` and the identifier in `mdbindery.yaml`). Build copies, never the files under `examples/` or `tests/fixtures/`:
+Builds write `dist/`; EPUB builds may also save an identifier in `mdbindery.yaml`. PDF leaves source configuration unchanged. Build copies, never the files under `examples/` or `tests/fixtures/`:
 
 ```
 cp -r examples/sample-book /tmp/sample-book
 mdbindery build /tmp/sample-book
+mdbindery build /tmp/sample-book --format pdf
 mdbindery check tests/fixtures/broken-book     # must exit with 1
 ```
 
@@ -55,7 +56,9 @@ mdbindery check tests/fixtures/broken-book     # must exit with 1
 | Build steps and gates | `src/mdbindery/build.py`, then `docs/building.md` |
 | Check codes and reports | `src/mdbindery/check.py`, then `docs/checking.md` |
 | Tool lookup and versions | `src/mdbindery/tools.py`, `src/mdbindery/installer.py`, `install/`, then `docs/installation.md` |
-| Default stylesheet | `src/mdbindery/data/epub.css` |
+| Shared book stylesheet | `src/mdbindery/data/epub.css` |
+| PDF rendering, print styles and checks | `src/mdbindery/pdf.py`, `src/mdbindery/data/print.css`, `tests/test_pdf.py`, then `docs/pdf.md` |
+| Documentation site and agent references | `site/`; validate with `python site/validate.py` |
 
 Keep the book rules in [docs/book-structure.md](docs/book-structure.md), the check codes in [docs/checking.md](docs/checking.md), and the two skills under `skills/` in step with the code. Tool versions and checksums are pinned in `src/mdbindery/installer.py` and `install/`; [docs/design.md](docs/design.md#installer-and-pinned-versions) has the bump procedure.
 
@@ -69,7 +72,7 @@ Keep the book rules in [docs/book-structure.md](docs/book-structure.md), the che
 
 ## Style
 
-- Python 3.9 compatible, standard library plus PyYAML and Pillow. Follow the style of the surrounding code: short functions, no type annotations, single quotes.
+- Python 3.9 compatible, standard library plus PyYAML and Pillow; pypdf stays optional for PDF. Follow the style of the surrounding code: short functions, no type annotations, single quotes.
 - Run external programs through `build.run()` or with an argument list, never through a shell.
 - Messages for users are one plain line; errors say what to do next.
 - Docs: plain English, short sentences, sentence-case headings, tables for reference material.

@@ -5,13 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "mdbindery"
 dynamic = ["version"]
-description = "Turn a folder or GitHub repository of Markdown chapters into a validated EPUB 3 ebook."
+description = "Build EPUB 3 ebooks or paginated PDFs from Markdown chapters."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.9"
 authors = [{ name = "Taras Baranyuk" }]
-keywords = ["epub", "ebook", "markdown", "pandoc", "publishing", "book", "epubcheck", "mdbook"]
+keywords = ["epub", "pdf", "ebook", "markdown", "pandoc", "publishing", "book", "epubcheck", "mdbook"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Environment :: Console",

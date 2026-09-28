@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "name": "mdbindery",
   "version": "0.1.1",
-  "summary": "Build EPUB 3 ebooks from Markdown chapters or mdBook projects, run configured validation checks, and review the results.",
+  "summary": "Build EPUB 3 ebooks or paginated PDFs from Markdown chapters and mdBook projects. EPUB is the default; unreleased PDF export requires a source install with the pdf extra.",
   "author": "Taras Baranyuk",
   "license": "MIT",
   "homepage": "https://sagol.github.io/mdbindery/",
@@ -32,7 +32,8 @@
     "pypi_uv": "uv tool install mdbindery && mdbindery install-tools",
     "pypi_pipx": "pipx install mdbindery && mdbindery install-tools",
     "homebrew": "brew install sagol/tap/mdbindery && mdbindery install-tools",
-    "github_actions": "- uses: sagol/mdbindery@v0.1.1"
+    "github_actions": "- uses: sagol/mdbindery@v0.1.1",
+    "pdf_source": "python -m pip install '.[pdf]' && mdbindery install-tools"
   },
   "cli_commands": {
     "doctor": {
@@ -54,7 +55,7 @@
     },
     "check": {
       "syntax": "mdbindery check [target] [-c FILE] [--ref REF] [--build] [--no-render] [--report FILE] [--json FILE] [-q]",
-      "description": "Dry-run static and pandoc analysis on a local folder or Git/GitHub URL. Reports MB001-MB904 findings with severity, suggested fix, and file and line where available.",
+      "description": "Dry-run static and pandoc analysis on a local folder or Git/GitHub URL. Reports MB001-MB904 findings with severity, suggested fix, and file and line where available. The optional --build trial builds EPUB only.",
       "exit_codes": {
         "0": "No errors found (warnings and info notes allowed).",
         "1": "At least one error found (or trial build failed with --build).",
@@ -63,12 +64,12 @@
       }
     },
     "build": {
-      "syntax": "mdbindery build [path] [-c CONFIG] [-o OUT] [--no-ace] [--keep-work] [-q]",
-      "description": "Build <output_dir>/<slug>.epub and reports/build.json, running configured gates (links, images, charts, includes, epubcheck, ace, wordcount). The includes gate is recorded only on failure and omitted otherwise. Writes reports/epubcheck.json and reports/ace/report.json when those validators run.",
+      "syntax": "mdbindery build [path] [-c CONFIG] [-o OUT] [--format epub|pdf] [--no-ace] [--keep-work] [-q]",
+      "description": "Build <slug>.epub by default or <slug>.pdf with --format pdf. Both run source gates. EPUB adds EPUBCheck, Ace and per-chapter word counts; PDF checks resources, internal links and extracted text. EPUB reports use reports/; PDF reports use reports/pdf/. The includes gate appears only on failure. PDF leaves source configuration unchanged.",
       "exit_codes": {
-        "0": "EPUB built and no active gate failed (warn or skipped gates do not fail the build).",
-        "1": "EPUB written, but at least one validation gate failed.",
-        "2": "Configuration error or pre-build error.",
+        "0": "Selected book format built; no active gate failed.",
+        "1": "Book written, but at least one validation gate failed.",
+        "2": "Configuration or build error; PDF renderer errors preserve an older output.",
         "3": "Internal error."
       }
     },
@@ -98,6 +99,13 @@
     "includes",
     "epubcheck",
     "ace",
-    "wordcount"
-  ]
+    "wordcount",
+    "pdf"
+  ],
+  "output_formats": [
+    "epub",
+    "pdf"
+  ],
+  "default_output_format": "epub",
+  "pdf_status": "Unreleased; source checkout with pdf extra required. Version 0.1.1 lacks PDF support."
 }
