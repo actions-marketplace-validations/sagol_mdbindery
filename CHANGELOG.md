@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (2026-09-28)
 
 - Report failed tool version probes correctly in `doctor`, including timeouts and launch errors.
 - Stop Git fetch subprocesses on timeout or interruption and bound captured diagnostics.

@@ -7,7 +7,7 @@ description: Prepare a GitHub or local repository of Markdown chapters for mdbin
 
 mdbindery builds EPUB 3 or optional PDF from Markdown written the GitHub way: one file per chapter, relative links between files, images inside the repository, citations as `[1]` with reference definitions. This skill brings an existing repository into that shape and loops on `mdbindery check` and `mdbindery build` until every gate passes. The same files must keep rendering well on github.com.
 
-The authoritative rules are in `docs/book-structure.md`, `docs/checking.md`, and `docs/configuration.md` of the mdbindery repository. This skill adds the procedure, a fix for every check code, and the tool's limits, covering the `0.1.1` EPUB workflow and unreleased PDF export. The procedure below uses EPUB by default. For PDF-only work, apply the same source fixes, then follow the PDF instructions in the `mdbindery` skill: build with `--format pdf`, read `reports/pdf/`, and inspect PDF layout in a viewer. Do not require EPUBCheck, Ace, an identifier or EPUB screenshots for PDF-only delivery. `check --build` remains EPUB-only.
+The authoritative rules are in `docs/book-structure.md`, `docs/checking.md`, and `docs/configuration.md` of the mdbindery repository. This skill adds the procedure, a fix for every check code, and the tool's limits, covering the `0.2.0` EPUB and PDF workflows. The procedure below uses EPUB by default. For PDF-only work, apply the same source fixes, then follow the PDF instructions in the `mdbindery` skill: build with `--format pdf`, read `reports/pdf/`, and inspect PDF layout in a viewer. Do not require EPUBCheck, Ace, an identifier or EPUB screenshots for PDF-only delivery. `check --build` remains EPUB-only.
 
 ## When to use
 
@@ -629,7 +629,7 @@ Severity: E error, W warning, I info (note). Only errors make `check` exit with 
 
 ## Known limitations
 
-Verified in mdbindery 0.1.1. Keep them in mind so you do not chase phantom problems or miss real ones.
+Verified in mdbindery 0.2.0. Keep them in mind so you do not chase phantom problems or miss real ones.
 
 - MB106 and MB110 are warnings because the build repairs these files; fix them anyway, since the repaired titles come from file names or promoted headings the author did not choose. MB107 is a warning because the book still builds, with one more table of contents entry for each extra `#` heading.
 - `facts.totals.images` estimates image kinds line by line (8.2); the preview decides.

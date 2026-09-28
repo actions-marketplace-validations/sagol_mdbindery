@@ -69,7 +69,7 @@ The installers put the `mdbindery` command in `~/.local/bin` (Windows: `%USERPRO
 mdbindery looks for its tools in `MDBINDERY_HOME` on every run, not only during installation. If you installed with a custom `MDBINDERY_HOME` and a new terminal does not have it set, mdbindery looks in the default folder and finds nothing there:
 
 ```
-mdbindery 0.1.1
+mdbindery 0.2.0
 tool home: .../.local/share/mdbindery (default; set MDBINDERY_HOME to use another)
 --- tools
 pandoc     missing
@@ -363,8 +363,8 @@ The last lines of the traceback follow. Report the problem at the address shown,
 
 ## PDF export errors
 
-- `unrecognized arguments: --format pdf`: installed release lacks PDF support. Use a source checkout containing this feature; version `0.1.1` predates it.
-- `PDF needs pypdf`: install `.[pdf]` from the repository root in the same Python environment as the CLI.
+- `unrecognized arguments: --format pdf`: installed release lacks PDF support. Upgrade to version `0.2.0` or newer with the `pdf` extra.
+- `PDF needs pypdf`: install `mdbindery[pdf]` in the same Python environment as the CLI.
 - Missing Node/Puppeteer: run `mdbindery install-tools` without `--no-node`. `doctor` does not check pypdf.
 - `PDF resources or internal links failed`: check images, anchors and CSS. Browser requests allow only staged assets and data URLs. List CSS fonts in `options.embed_fonts` and reference those exact paths. Remote CSS resources and unstaged files are blocked.
 - Browser sandbox cannot start: PDF does not retry without it. On a trusted CI/container host, explicitly set `MDBINDERY_NO_SANDBOX=1`. See [PDF resource handling](pdf.md#checks-and-failures).

@@ -10,15 +10,15 @@ EPUB remains the default. PDF output is `<output_dir>/<slug>.pdf`. Reports use `
 
 ## Install PDF dependencies
 
-PDF uses the existing Node.js, Puppeteer and headless Chrome installed by `mdbindery install-tools`. The `pdf` Python extra adds pypdf for output validation. From a source checkout, inside your Python environment:
+PDF uses the existing Node.js, Puppeteer and headless Chrome installed by `mdbindery install-tools`. The `pdf` Python extra adds pypdf for output validation. With version 0.2.0 or newer, inside your Python environment:
 
 ```sh
-python -m pip install '.[pdf]'
+python -m pip install 'mdbindery[pdf]>=0.2.0'
 mdbindery install-tools
-mdbindery build examples/sample-book --format pdf
+mdbindery build ./my-book --format pdf
 ```
 
-For a published release containing PDF support, install `mdbindery[pdf]` instead. An EPUB-only installation can keep `--no-node` and omit the PDF extra. PDF export reports missing dependencies before preparing chapters.
+For a source checkout, use `python -m pip install '.[pdf]'` at the repository root instead. For an isolated CLI installation, use `uv tool install 'mdbindery[pdf]'` or `pipx install 'mdbindery[pdf]'`. An EPUB-only installation can keep `--no-node` and omit the PDF extra. PDF export reports missing dependencies before preparing chapters.
 
 ## Page settings
 

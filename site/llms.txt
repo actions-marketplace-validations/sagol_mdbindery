@@ -2,7 +2,7 @@
 
 > Build EPUB 3 ebooks or paginated PDFs from Markdown chapters and mdBook projects. Shared preparation handles links, citations, images, Mermaid, math and tables. EPUB uses EPUBCheck, Ace and per-file word counts; PDF checks resources, internal links and extracted text. Review reports and layout before publishing.
 
-- Released version: `0.1.1`. PDF support is unreleased and requires a source checkout with the `pdf` extra.
+- Released version: `0.2.0`. PDF export requires the optional `pdf` extra.
 - License: MIT
 - Author: Taras Baranyuk
 - Repository: https://github.com/sagol/mdbindery
@@ -41,8 +41,8 @@ mdbindery init
 # Build EPUB 3 and run configured validation gates
 mdbindery build path/to/your-book
 
-# PDF from a source checkout: run pip at the repository root in your Python environment
-python -m pip install '.[pdf]'
+# PDF: install the extra in your Python environment
+python -m pip install 'mdbindery[pdf]>=0.2.0'
 mdbindery install-tools
 mdbindery build path/to/your-book --format pdf
 
@@ -63,7 +63,7 @@ mdbindery preview dist/writing-a-book-in-markdown.epub shots
 - [Configuration reference](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/configuration.md): Every `mdbindery.yaml` key (`metadata`, `files`, `cover`, `options`).
 - [Checks and diagnostic codes](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/checking.md): `mdbindery check`, JSON report format, and every `MB001`–`MB904` diagnostic code with fix instructions.
 - [Builds and validation gates](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/building.md): Build pipeline, outputs (`dist/<slug>.epub`, `dist/reports/build.json`, `dist/reports/epubcheck.json`, `dist/reports/ace/report.json`), reproducibility conditions, and validation gates.
-- [PDF export](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/pdf.md): Source installation, A4/Letter settings, margins, fonts, text/resource checks and layout limits. Reports use `reports/pdf/`; EPUB remains default.
-- [Installation guide](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/installation.md): Linux, macOS, Windows, offline/CI setups, GitHub Action (`uses: sagol/mdbindery@v0.1.1`).
+- [PDF export](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/pdf.md): PDF installation, A4/Letter settings, margins, fonts, text/resource checks and layout limits. Reports use `reports/pdf/`; EPUB remains default.
+- [Installation guide](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/installation.md): Linux, macOS, Windows, offline/CI setups, GitHub Action (`uses: sagol/mdbindery@v0.2.0`).
 - [Troubleshooting](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/troubleshooting.md): Common errors and remediation steps.
 - [Architecture and design](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/design.md): Internal pipeline, Lua filters (`book.lua`), CSS (`epub.css`), and gate mechanics.

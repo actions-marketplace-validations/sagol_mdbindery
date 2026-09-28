@@ -17,7 +17,7 @@
   <meta name="theme-color" content="#111110">
 
   <title>mdbindery: Markdown chapters to EPUB and PDF</title>
-  <meta name="description" content="Build EPUB 3 ebooks or paginated PDFs from Markdown chapters and mdBook projects. EPUB is the default; unreleased PDF export requires a source install with the pdf extra.">
+  <meta name="description" content="Build EPUB 3 ebooks or paginated PDFs from Markdown chapters and mdBook projects. EPUB is the default; PDF export requires the optional pdf extra.">
   <meta name="keywords" content="mdbindery, markdown to epub, github to epub, epub 3 generator, mdbook to epub, epubcheck cli, daisy ace accessibility, pandoc epub builder, reproducible epub, ai agent skill epub">
   <meta name="author" content="Taras Baranyuk">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
@@ -35,7 +35,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="mdbindery">
   <meta property="og:title" content="mdbindery: Markdown chapters to EPUB and PDF">
-  <meta property="og:description" content="Build EPUB 3 ebooks or paginated PDFs from Markdown chapters and mdBook projects. EPUB is the default; unreleased PDF export requires a source install with the pdf extra.">
+  <meta property="og:description" content="Build EPUB 3 ebooks or paginated PDFs from Markdown chapters and mdBook projects. EPUB is the default; PDF export requires the optional pdf extra.">
   <meta property="og:url" content="https://sagol.github.io/mdbindery/">
   <meta property="og:image" content="https://sagol.github.io/mdbindery/og-image.png">
   <meta property="og:image:width" content="1200">
@@ -46,7 +46,7 @@
   <!-- Twitter / X Card -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="mdbindery: Markdown chapters to EPUB and PDF">
-  <meta name="twitter:description" content="Build EPUB 3 ebooks or paginated PDFs from Markdown chapters and mdBook projects. EPUB is the default; unreleased PDF export requires a source install with the pdf extra.">
+  <meta name="twitter:description" content="Build EPUB 3 ebooks or paginated PDFs from Markdown chapters and mdBook projects. EPUB is the default; PDF export requires the optional pdf extra.">
   <meta name="twitter:image" content="https://sagol.github.io/mdbindery/og-image.png">
   <meta name="twitter:image:alt" content="mdbindery commands for building EPUB ebooks and optional PDFs from Markdown">
 
@@ -62,7 +62,7 @@
         "@id": "https://sagol.github.io/mdbindery/#website",
         "url": "https://sagol.github.io/mdbindery/",
         "name": "mdbindery",
-        "description": "Build EPUB 3 ebooks or paginated PDFs from Markdown chapters and mdBook projects. EPUB is the default; unreleased PDF export requires a source install with the pdf extra.",
+        "description": "Build EPUB 3 ebooks or paginated PDFs from Markdown chapters and mdBook projects. EPUB is the default; PDF export requires the optional pdf extra.",
         "inLanguage": "en-US"
       },
       {
@@ -72,7 +72,7 @@
         "applicationCategory": "DeveloperApplication",
         "applicationSubCategory": "Publishing & Ebook Toolchain",
         "operatingSystem": "Linux, macOS, Windows",
-        "softwareVersion": "0.1.1",
+        "softwareVersion": "0.2.0",
         "license": "https://opensource.org/licenses/MIT",
         "url": "https://sagol.github.io/mdbindery/",
         "downloadUrl": "https://pypi.org/project/mdbindery/",
@@ -90,7 +90,7 @@
         },
         "featureList": [
           "Converts GitHub Markdown repositories and mdBook projects into EPUB 3 ebooks",
-          "Exports paginated PDFs from source installations with the pdf extra; unreleased in version 0.1.1",
+          "Exports paginated PDFs with the optional pdf extra",
           "Resolves cross-file relative links, GitHub heading slugs, and custom HTML anchors",
           "Transforms invisible numeric reference definitions [1] into linked reference lists",
           "Renders Mermaid diagrams to PNG with automatic alt text",
@@ -168,7 +168,7 @@
             "name": "Can I export PDF as well as EPUB?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Yes, from a source install with the pdf extra and Node/Puppeteer tools. Use mdbindery build --format pdf. EPUB remains the default. PDF reports live in reports/pdf/; EPUBCheck and Ace apply only to EPUB. PDF support is unreleased and is not included in version 0.1.1."
+              "text": "Yes, with version 0.2.0 or newer, the pdf extra and Node/Puppeteer tools. Use mdbindery build --format pdf. EPUB remains the default. PDF reports live in reports/pdf/; EPUBCheck and Ace apply only to EPUB."
             }
           }
         ]
@@ -186,7 +186,7 @@
       <a class="brand" href="./" aria-label="mdbindery home">
         <img class="brand-icon" src="favicon.svg" alt="" width="30" height="30">
         <span>mdbindery</span>
-        <span class="version-pill">v0.1.1</span>
+        <span class="version-pill">v0.2.0</span>
       </a>
 
       <nav class="site-nav" aria-label="Primary navigation">
@@ -229,7 +229,7 @@
           <strong>mdbindery</strong> turns Markdown chapters or mdBook projects into EPUB 3 ebooks or paginated PDFs. Both formats share chapter links, citations, images, Mermaid diagrams and table conversion. EPUB runs EPUBCheck and DAISY Ace; PDF checks resources, links and extracted text. Review reports and layout before sharing.
         </p>
 
-        <p>EPUB remains the default. PDF export is unreleased and needs a source install with the <code>pdf</code> extra. <a href="#pdf-install">Set up PDF export</a>.</p>
+        <p>EPUB remains the default. PDF export is available with the optional <code>pdf</code> extra. <a href="#pdf-install">Set up PDF export</a>.</p>
 
         <div class="hero-cta-row">
           <a class="btn btn-primary" href="#install">Install mdbindery</a>
@@ -263,7 +263,7 @@ mdbindery: writing-a-book-in-markdown (5 files)
 <span class="cmd-ok">BUILD OK</span>
 
 <span class="cmd-comment"># 3. Export PDF after installing PDF dependencies</span>
-<span class="cmd-prompt">$ </span>mdbindery build examples/sample-book --format pdf</code></pre>
+<span class="cmd-prompt">$ </span>mdbindery build ./my-book --format pdf</code></pre>
           </div>
 
           <aside class="ereader-card" aria-label="Rendered EPUB 3 phone preview illustration">
@@ -410,7 +410,7 @@ mdbindery: writing-a-book-in-markdown (5 files)
             <p>Pin a specific release tag or pass <code>--no-node</code> to skip Node.js tools (<code>~370 MB</code> instead of <code>~1.5 GB</code>):</p>
             <div class="code-block-wrap">
               <button class="copy-btn" type="button" data-copy-target="code-install-unix-pin">Copy</button>
-              <pre><code id="code-install-unix-pin">curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/v0.1.1/install/install.sh | bash -s -- --ref v0.1.1</code></pre>
+              <pre><code id="code-install-unix-pin">curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/v0.2.0/install/install.sh | bash -s -- --ref v0.2.0</code></pre>
             </div>
           </div>
 
@@ -450,19 +450,19 @@ mdbindery doctor</code></pre>
             <p>Use the official composite GitHub Action with tool caching across workflow runs:</p>
             <div class="code-block-wrap">
               <button class="copy-btn" type="button" data-copy-target="code-install-gha">Copy</button>
-              <pre><code id="code-install-gha">- uses: sagol/mdbindery@v0.1.1
+              <pre><code id="code-install-gha">- uses: sagol/mdbindery@v0.2.0
 - run: mdbindery build path/to/book</code></pre>
             </div>
           </div>
         </div>
         <div id="pdf-install">
-          <h3>Optional PDF export from source</h3>
-          <p>Released version <code>0.1.1</code> predates PDF support. From a source checkout containing this feature, run these commands at the repository root in your Python environment:</p>
+          <h3>Optional PDF export</h3>
+          <p>Install version 0.2.0 or newer with the PDF extra in your Python environment:</p>
           <div class="code-block-wrap">
             <button class="copy-btn" type="button" data-copy-target="code-install-pdf">Copy</button>
-            <pre><code id="code-install-pdf">python -m pip install '.[pdf]'
+            <pre><code id="code-install-pdf">python -m pip install 'mdbindery[pdf]>=0.2.0'
 mdbindery install-tools
-mdbindery build examples/sample-book --format pdf</code></pre>
+mdbindery build ./my-book --format pdf</code></pre>
           </div>
           <p>PDF needs Node.js, Puppeteer and pypdf. An install with <code>--no-node</code> cannot export PDF. <code>doctor</code> checks the EPUB toolchain; it does not verify pypdf. See the <a href="https://github.com/sagol/mdbindery/blob/main/docs/pdf.md" rel="noopener noreferrer">PDF guide</a>.</p>
         </div>
@@ -1216,7 +1216,7 @@ mdbindery preview dist/writing-a-book-in-markdown.epub shots</code></pre>
 
 
         <div class="faq-list">
-        <details class="faq-item"><summary>Can I export PDF as well as EPUB?</summary><p>Yes, from a source install with the pdf extra and Node/Puppeteer tools. Use mdbindery build --format pdf. EPUB remains the default. PDF reports live in reports/pdf/; EPUBCheck and Ace apply only to EPUB. PDF support is unreleased and is not included in version 0.1.1.</p></details>
+        <details class="faq-item"><summary>Can I export PDF as well as EPUB?</summary><p>Yes, with version 0.2.0 or newer, the pdf extra and Node/Puppeteer tools. Use mdbindery build --format pdf. EPUB remains the default. PDF reports live in reports/pdf/; EPUBCheck and Ace apply only to EPUB.</p></details>
           <details class="faq-item" open>
             <summary>What makes mdbindery different from running pandoc directly?</summary>
             <p>
@@ -1252,7 +1252,7 @@ mdbindery preview dist/writing-a-book-in-markdown.epub shots</code></pre>
   <footer class="site-footer" role="contentinfo">
     <div class="container footer-inner">
       <div>
-        <strong>mdbindery v0.1.1</strong> · Created by Taras Baranyuk · Released under the <a href="https://github.com/sagol/mdbindery/blob/main/LICENSE" rel="noopener noreferrer">MIT License</a>.<br>
+        <strong>mdbindery v0.2.0</strong> · Created by Taras Baranyuk · Released under the <a href="https://github.com/sagol/mdbindery/blob/main/LICENSE" rel="noopener noreferrer">MIT License</a>.<br>
         Orchestrates <a href="https://pandoc.org" rel="noopener noreferrer">pandoc</a>, <a href="https://www.w3.org/publishing/epubcheck/" rel="noopener noreferrer">EPUBCheck</a>, <a href="https://daisy.github.io/ace/" rel="noopener noreferrer">DAISY Ace</a>, <a href="https://github.com/mermaid-js/mermaid-cli" rel="noopener noreferrer">mermaid-cli</a>, <a href="https://adoptium.net" rel="noopener noreferrer">Eclipse Temurin</a>, and <a href="https://github.com/astral-sh/uv" rel="noopener noreferrer">uv</a>.
       </div>
       <div class="footer-links">

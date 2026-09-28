@@ -1,15 +1,15 @@
 {
   "schema_version": "1.0",
   "name": "mdbindery",
-  "version": "0.1.1",
-  "summary": "Build EPUB 3 ebooks or paginated PDFs from Markdown chapters and mdBook projects. EPUB is the default; unreleased PDF export requires a source install with the pdf extra.",
+  "version": "0.2.0",
+  "summary": "Build EPUB 3 ebooks or paginated PDFs from Markdown chapters and mdBook projects. EPUB is the default; PDF export requires the optional pdf extra.",
   "author": "Taras Baranyuk",
   "license": "MIT",
   "homepage": "https://sagol.github.io/mdbindery/",
   "repository": "https://github.com/sagol/mdbindery",
   "pypi": "https://pypi.org/project/mdbindery/",
   "homebrew": "sagol/tap/mdbindery",
-  "github_action": "sagol/mdbindery@v0.1.1",
+  "github_action": "sagol/mdbindery@v0.2.0",
   "ai_resources": {
     "llms_txt": "https://sagol.github.io/mdbindery/llms.txt",
     "llms_full_txt": "https://sagol.github.io/mdbindery/llms-full.txt",
@@ -32,7 +32,8 @@
     "pypi_uv": "uv tool install mdbindery && mdbindery install-tools",
     "pypi_pipx": "pipx install mdbindery && mdbindery install-tools",
     "homebrew": "brew install sagol/tap/mdbindery && mdbindery install-tools",
-    "github_actions": "- uses: sagol/mdbindery@v0.1.1",
+    "github_actions": "- uses: sagol/mdbindery@v0.2.0",
+    "pdf_pypi": "python -m pip install 'mdbindery[pdf]>=0.2.0' && mdbindery install-tools",
     "pdf_source": "python -m pip install '.[pdf]' && mdbindery install-tools"
   },
   "cli_commands": {
@@ -107,5 +108,5 @@
     "pdf"
   ],
   "default_output_format": "epub",
-  "pdf_status": "Unreleased; source checkout with pdf extra required. Version 0.1.1 lacks PDF support."
+  "pdf_status": "Available since 0.2.0; requires the pdf extra and Node/Puppeteer tools."
 }

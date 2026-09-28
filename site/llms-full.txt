@@ -1,7 +1,7 @@
 # mdbindery: technical reference for LLMs and coding agents
 
 - Package: `mdbindery`
-- Released version: `0.1.1`. PDF support is unreleased; use a source checkout with the `pdf` extra.
+- Released version: `0.2.0`. PDF export requires the optional `pdf` extra.
 - License: MIT
 - Author: Taras Baranyuk
 - Repository: https://github.com/sagol/mdbindery
@@ -40,7 +40,7 @@ Downloaded uv, pandoc, EPUBCheck, and Node.js binaries are checked against pinne
 curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/main/install/install.sh | bash
 
 # Pin release tag
-curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/v0.1.1/install/install.sh | bash -s -- --ref v0.1.1
+curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/v0.2.0/install/install.sh | bash -s -- --ref v0.2.0
 
 # Windows PowerShell
 irm https://raw.githubusercontent.com/sagol/mdbindery/main/install/install.ps1 | iex
@@ -69,18 +69,18 @@ brew install sagol/tap/mdbindery && mdbindery install-tools
 
 GitHub Actions workflow:
 ```yaml
-- uses: sagol/mdbindery@v0.1.1
+- uses: sagol/mdbindery@v0.2.0
 - run: mdbindery build path/to/book
 ```
 
-### PDF dependencies (source checkout)
+### PDF dependencies
 
-Version `0.1.1` lacks PDF support. At the root of a checkout containing the feature, run inside your Python environment:
+Install version 0.2.0 or newer with the PDF extra inside your Python environment:
 
 ```sh
-python -m pip install '.[pdf]'
+python -m pip install 'mdbindery[pdf]>=0.2.0'
 mdbindery install-tools
-mdbindery build examples/sample-book --format pdf
+mdbindery build ./my-book --format pdf
 ```
 
 The extra installs pypdf. Rendering reuses the installed Node.js, Puppeteer and Chromium. Do not use `--no-node` for PDF. See [PDF guide](https://raw.githubusercontent.com/sagol/mdbindery/main/docs/pdf.md).

@@ -294,7 +294,7 @@ Links phase (`work/links.ctx.json`): `{"h1": {"k00": "k00-writing-a-book-in-mark
   "pandoc_warnings": [],
   "epub": ".../dist/writing-a-book-in-markdown.epub",
   "cover": ".../dist/writing-a-book-in-markdown-cover.jpg",
-  "provenance": {"mdbindery": "0.1.1", "python": "3.12.14", "pandoc": "3.11", "epubcheck": "epubcheck-5.4.0",
+  "provenance": {"mdbindery": "0.2.0", "python": "3.12.14", "pandoc": "3.11", "epubcheck": "epubcheck-5.4.0",
                  "ace": "1.4.6", "source_revision": "<git commit or null>", "options": {}},
   "timings": {"analysis": 1.9, "epub": 0.6, "epubcheck": 2.8, "ace": 6.1, "wordcount": 0.5},
   "ok": true,

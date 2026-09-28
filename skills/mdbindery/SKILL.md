@@ -5,7 +5,7 @@ description: Operate mdbindery, the CLI that builds EPUB 3 ebooks or optional PD
 
 # Run mdbindery
 
-mdbindery turns a folder or GitHub repository of Markdown chapters (one file per chapter, relative links, local images, `[1]` citations with reference definitions) into EPUB 3 (default) or PDF (`--format pdf`). Both share source checks. EPUB adds EPUBCheck, Ace and per-chapter word counts; PDF checks rendered resources, internal links and extracted text. A failed gate fails the build. PDF support is unreleased; install from source with the `pdf` extra. See the PDF section below.
+mdbindery turns a folder or GitHub repository of Markdown chapters (one file per chapter, relative links, local images, `[1]` citations with reference definitions) into EPUB 3 (default) or PDF (`--format pdf`). Both share source checks. EPUB adds EPUBCheck, Ace and per-chapter word counts; PDF checks rendered resources, internal links and extracted text. A failed gate fails the build. PDF export is available in 0.2.0 with the `pdf` extra. See the PDF section below.
 
 This skill covers running the tool. Fixing the repository belongs to the `mdbindery-prepare-repo` skill; switch to it as soon as `check` reports problems in the Markdown.
 
@@ -46,7 +46,7 @@ mdbindery doctor
 `doctor` prints the version, the tool home, and one line per tool:
 
 ```
-mdbindery 0.1.1
+mdbindery 0.2.0
 tool home: /home/you/.local/share/mdbindery (default; set MDBINDERY_HOME to use another)
 --- tools
 pandoc     pandoc 3.11
@@ -246,7 +246,7 @@ Without a config, mdbindery infers the reading order: from `SUMMARY.md` or anoth
 
 ## Optional PDF output
 
-PDF support is unreleased; version `0.1.1` lacks it. From the root of a source checkout containing this feature, install `python -m pip install '.[pdf]'` in the CLI's Python environment, then `mdbindery install-tools` without `--no-node`. Run `mdbindery build BOOK --format pdf`.
+PDF export requires version 0.2.0 or newer. Install `python -m pip install 'mdbindery[pdf]>=0.2.0'` in the CLI's Python environment, then `mdbindery install-tools` without `--no-node`. Run `mdbindery build BOOK --format pdf`.
 
 EPUB remains default. PDF reports use `reports/pdf/`; source config and any existing EPUB reports stay unchanged. Inspect `gates.pdf` and the PDF itself. Page sizes A4/Letter, margins 10–40 mm and page numbers live under `options.pdf`. `doctor` does not check pypdf. `check --build`, `preview`, EPUBCheck and Ace apply only to EPUB.
 

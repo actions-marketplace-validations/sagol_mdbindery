@@ -65,8 +65,8 @@ When the installer finishes, open a new terminal and run `mdbindery doctor` (see
 The commands above install the latest code on `main`. To install a release, take the installer from its tag and pass the same tag as `--ref` (`-Ref` on Windows):
 
 ```
-curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/v0.1.1/install/install.sh | bash -s -- --ref v0.1.1
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/sagol/mdbindery/v0.1.1/install/install.ps1))) -Ref v0.1.1
+curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/v0.2.0/install/install.sh | bash -s -- --ref v0.2.0
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/sagol/mdbindery/v0.2.0/install/install.ps1))) -Ref v0.2.0
 ```
 
 The installers never ask questions and exit with a non-zero status when a step fails, so they can run unattended in provisioning scripts and CI.
@@ -81,7 +81,7 @@ Every channel installs the same `mdbindery` command. The external tools always c
 | PyPI with uv | `uv tool install mdbindery` | `uv tool upgrade mdbindery` |
 | PyPI with pip | `python -m pip install mdbindery` (in a virtual environment) | `python -m pip install -U mdbindery` |
 | Homebrew (macOS, Linux) | `brew install sagol/tap/mdbindery` | `brew upgrade mdbindery` |
-| A release's files | the wheel or source archive from the [releases page](https://github.com/sagol/mdbindery/releases): `pipx install ./mdbindery-0.1.1-py3-none-any.whl` | install the newer file |
+| A release's files | the wheel or source archive from the [releases page](https://github.com/sagol/mdbindery/releases): `pipx install ./mdbindery-0.2.0-py3-none-any.whl` | install the newer file |
 
 After any of these, run:
 
@@ -90,7 +90,7 @@ mdbindery install-tools
 mdbindery doctor
 ```
 
-To pin a version: `pipx install mdbindery==0.1.1`, `uv tool install mdbindery==0.1.1`.
+To pin a version: `pipx install mdbindery==0.2.0`, `uv tool install mdbindery==0.2.0`.
 
 ### GitHub Actions
 
@@ -102,7 +102,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: sagol/mdbindery@v0.1.1
+      - uses: sagol/mdbindery@v0.2.0
       - run: mdbindery check . --build
       - run: mdbindery build
       - uses: actions/upload-artifact@v4
@@ -388,7 +388,7 @@ Building needs no network access: a remote image (`https://...`) is never downlo
 `mdbindery doctor` prints the version, the tool home, and one line per tool. A full install in the default tool home (path shortened):
 
 ```
-mdbindery 0.1.1
+mdbindery 0.2.0
 tool home: .../.local/share/mdbindery (default; set MDBINDERY_HOME to use another)
 --- tools
 pandoc     pandoc 3.11
@@ -448,4 +448,4 @@ Installed from PyPI, Homebrew, or manually: uninstall the package (`pipx uninsta
 
 ## Optional PDF export
 
-PDF needs the `pdf` Python extra and the Node/Puppeteer tools; an install with `--no-node` cannot export PDF. See [PDF installation](pdf.md#install-pdf-dependencies). PDF support is unreleased; version `0.1.1` lacks it. Install the source checkout with `python -m pip install '.[pdf]'` in your Python environment. Base installers omit this extra. `doctor` checks the EPUB toolchain; a successful `doctor` run does not prove pypdf is installed.
+PDF needs the `pdf` Python extra and the Node/Puppeteer tools; an install with `--no-node` cannot export PDF. See [PDF installation](pdf.md#install-pdf-dependencies). PDF export requires version 0.2.0 or newer. Install `python -m pip install 'mdbindery[pdf]>=0.2.0'` in your Python environment. Base installers omit this extra. `doctor` checks the EPUB toolchain; a successful `doctor` run does not prove pypdf is installed.

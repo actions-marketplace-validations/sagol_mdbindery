@@ -1,6 +1,6 @@
 # mdbindery site
 
-Static landing page and technical reference for `mdbindery` (`v0.1.1` release plus unreleased PDF export from source). Includes search metadata, coding-agent resources, and deployment helpers in `site/`.
+Static landing page and technical reference for `mdbindery` (`v0.2.0`, with EPUB and optional PDF export). Includes search metadata, coding-agent resources, and deployment helpers in `site/`.
 
 ## Files
 
@@ -40,7 +40,7 @@ python3 site/stage.py _site
 
 Staging requires an empty destination and copies only `stage.PUBLIC_FILES`. The README, scripts, and workflow template are excluded. Preview `_site/` to review the published files.
 
-The validator parses command examples without executing them. It checks the HTML and LLM configuration examples against the current schema, not the existence of example book files. It also checks diagnostic identifiers, local links, fragment IDs, ARIA/copy targets, the web manifest, sitemap XML, and JSON-LD. It does not check external URLs, every prose claim, or screen-reader behavior. Keep unreleased PDF setup distinct from release installation. EPUB-only validation and byte-reproducibility claims must stay labeled.
+The validator parses command examples without executing them. It checks the HTML and LLM configuration examples against the current schema, not the existence of example book files. It also checks diagnostic identifiers, local links, fragment IDs, ARIA/copy targets, the web manifest, sitemap XML, and JSON-LD. It does not check external URLs, every prose claim, or screen-reader behavior. Keep the optional PDF dependencies explicit. EPUB-only validation and byte-reproducibility claims must stay labeled.
 
 Before release, inspect 320, 390, 768, and 1280 px layouts in both themes. Check keyboard tabs, filtering, clipboard rejection, no-JS instructions, reduced motion, and zoom. Full accessibility conformance needs a broader review than these checks.
 

@@ -1,2 +1,2 @@
-"""mdbindery: Markdown chapters to validated EPUB 3."""
-__version__ = "0.1.1"
+"""mdbindery: Markdown chapters to validated EPUB 3 or paginated PDF."""
+__version__ = "0.2.0"
