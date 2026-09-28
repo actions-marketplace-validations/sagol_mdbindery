@@ -100,7 +100,7 @@ Environment variables:
 
 Prints `mdbindery` version, tool home path, and status of `pandoc` (>=3.8 required), `epubcheck` (v5.4.0), `java` (>=11), `node`, `mermaid` (`renders PNG`), `ace` (1.4.6), and `python`.
 
-- Exit `0`: `pandoc` and `epubcheck` present (missing Node tools emit notes only).
+- Exit `0`: `pandoc` and `epubcheck` work (missing or broken Node tools emit notes only).
 - Exit `1`: `pandoc` or `epubcheck` missing/broken.
 
 `doctor` checks the EPUB toolchain; it does not check pypdf or prove PDF export readiness.

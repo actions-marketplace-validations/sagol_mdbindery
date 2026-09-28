@@ -108,6 +108,8 @@ def pandoc_version(path):
                            errors='replace', timeout=30)
     except (OSError, subprocess.SubprocessError):
         return None
+    if r.returncode != 0:
+        return None
     m = re.match(r'pandoc(?:\.exe)?\s+(\d+)\.(\d+)', r.stdout or '')
     return (int(m.group(1)), int(m.group(2))) if m else None
 
@@ -198,6 +200,8 @@ def java_version(java):
         r = subprocess.run([java, '-version'], capture_output=True, text=True, encoding='utf-8',
                            errors='replace', timeout=30)
     except Exception:
+        return None
+    if r.returncode != 0:
         return None
     out = (r.stderr or '') + (r.stdout or '')
     m = re.search(r'version "(\d+)(?:\.(\d+))?', out)

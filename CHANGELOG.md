@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Report failed tool version probes correctly in `doctor`, including timeouts and launch errors.
+- Stop Git fetch subprocesses on timeout or interruption and bound captured diagnostics.
 - Fix EPUB preview when the system temporary directory uses a symlink, including macOS `/var`.
 - Add opt-in `build --format pdf` using shared chapter preparation and installed Chromium.
 - Add A4/Letter page settings, margins, page numbers and PDF text/resource checks.

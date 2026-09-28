@@ -40,8 +40,8 @@
       "syntax": "mdbindery doctor",
       "description": "Verify installed tools (pandoc, epubcheck, java, node, mermaid, ace, python).",
       "exit_codes": {
-        "0": "Required tools (pandoc >= 3.8, EPUBCheck) installed; missing Node tools only print notes.",
-        "1": "pandoc or EPUBCheck missing."
+        "0": "Required tools (pandoc >= 3.8, EPUBCheck) work; missing or broken Node tools only print notes.",
+        "1": "pandoc or EPUBCheck missing or unable to run."
       }
     },
     "init": {
