@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- EPUB navigation: the contents page is titled with the book title instead of `book`, the title page's NCX entry is no longer blank, and each chapter's page title is its contents label or first heading instead of its file name (`ch002.xhtml`).
+- The contents page is headed `Contents` or `Содержание` by `metadata.lang`; new `options.toc_title` sets it for other languages, and the build warns when it is missing.
+- New `navigation` gate: a page titled with a file name, or a contents or NCX entry with no label, fails the build.
+
 ## 0.2.0 (2026-09-28)
 
 - Report failed tool version probes correctly in `doctor`, including timeouts and launch errors.

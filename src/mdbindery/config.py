@@ -33,7 +33,7 @@ DEFAULTS = {
                                'Литература', 'Источники', 'Примечания', 'Список литературы'],
         'reference_heading_new': 'References',
         'drop_lines': [],
-        'toc': True, 'toc_depth': 2, 'split_level': 1,
+        'toc': True, 'toc_depth': 2, 'split_level': 1, 'toc_title': '',
         'mermaid': 'png', 'mermaid_scale': 2, 'mermaid_alt_prefix': 'Chart', 'mermaid_today_marker': False,
         'mermaid_theme': 'neutral', 'mermaid_font_size': 18,
         'cards': {'files': [], 'min_columns': 9, 'title_columns': 1},
@@ -65,6 +65,15 @@ DEFAULT_A11Y_SUMMARY = {
 def default_summary(lang, has_images, all_alt):
     base, endings = DEFAULT_A11Y_SUMMARY.get(lang, DEFAULT_A11Y_SUMMARY['en'])
     return base + endings['none' if not has_images else 'all' if all_alt else 'some']
+
+
+# the contents page heading; other languages set options.toc_title
+DEFAULT_TOC_TITLE = {'en': 'Contents', 'ru': 'Содержание'}
+
+
+def toc_title(opts):
+    """The contents heading: options.toc_title, else the built-in one for the book's language, else ''."""
+    return opts.get('toc_title') or DEFAULT_TOC_TITLE.get(opts.get('_summary_lang', 'en'), '')
 
 
 FILE_KEYS = {'file', 'role', 'title', 'drop_sections', 'mermaid_alt', 'key'}
@@ -492,7 +501,7 @@ def validate(data):
     for k in ('toc', 'strict_links', 'epubcheck', 'ace', 'mermaid_today_marker'):
         o[k] = _bool(o.get(k), f'options.{k}')
     for k in ('css', 'extra_css', 'reference_heading_new', 'mermaid_alt_prefix', 'accessibility_summary',
-              'conformance_claim', 'highlight_style', 'mermaid_theme'):
+              'conformance_claim', 'highlight_style', 'mermaid_theme', 'toc_title'):
         o[k] = _str(o.get(k), f'options.{k}')
     if o['highlight_style'] and not re.fullmatch(r'[\w-]+', o['highlight_style']):
         raise ConfigError('options.highlight_style must be a pandoc style name (e.g. monochrome, tango) or none')

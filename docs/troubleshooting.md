@@ -35,6 +35,7 @@ When something goes wrong, these four places answer most questions:
 | `CHART in 02-body.md failed to render (placeholder used)` | Mermaid syntax error | [Charts and Mermaid](#charts-and-mermaid) |
 | `warning: 3 chart(s) became placeholders: mermaid-cli is not installed` | Installed with `--no-node` | Run `mdbindery install-tools` without `--no-node` |
 | `serious color-contrast x11`, then `BUILD FAILED: ace` | Text and background colors too close | [Ace failures](#ace-failures) |
+| `NAVIGATION: EPUB/toc.ncx: entry 4 has no label`, then `BUILD FAILED: navigation` | A heading with no text | Give the heading text; see [navigation](building.md#navigation) |
 | `word count: FAILED: text lost or added beyond 2% or 25 words per file` | Text lost or duplicated in conversion | [Word-count gate](#word-count-gate) |
 | `build error: pandoc did not finish within 1800 s and was stopped` | A tool hung, or the book is very large for this machine | [Time limits](#time-limits) |
 | `install failed: another \`mdbindery install-tools\` is running` | A second install into the same tool home, or a lock file left by a killed install | Wait for the other install, or delete the named lock file |

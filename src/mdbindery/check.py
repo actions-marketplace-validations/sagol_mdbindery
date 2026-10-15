@@ -861,6 +861,8 @@ def trial_build(rep, cfg, analysis=None):
                 detail = '; '.join(p['directive'][:80] for p in gate.get('problems', [])[:3])
             elif name == 'charts':
                 detail = '; '.join(p['error'][:80] for p in gate.get('failures', [])[:3])
+            elif name == 'navigation':
+                detail = '; '.join(p[:120] for p in gate.get('problems', [])[:5])
             rep.add('error', 'MB904', f'trial build gate "{name}" failed' + (f': {detail[:400]}' if detail else ''),
                     'See docs/building.md for what each gate checks.')
         size = Path(s['epub']).stat().st_size // 1024 if s.get('epub') and Path(s['epub']).exists() else 0
