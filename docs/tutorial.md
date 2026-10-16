@@ -767,7 +767,7 @@ git commit -m "Fix everything mdbindery check reported"
 
 ## 6. Trial build
 
-`check` looks at the sources. A trial build goes further: it builds the whole EPUB in a temporary folder, runs EPUBCheck, Ace, and the word-count check on it, and reports what they find. On this book it takes 15 to 20 seconds.
+`check` looks at the sources. A trial build goes further: it builds the whole EPUB in a temporary folder, runs the navigation check, EPUBCheck, Ace, and the word-count check on it, and reports what they find. On this book it takes 15 to 20 seconds.
 
 ```console
 $ mdbindery check . --build

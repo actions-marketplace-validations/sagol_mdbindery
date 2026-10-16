@@ -66,7 +66,7 @@
     },
     "build": {
       "syntax": "mdbindery build [path] [-c CONFIG] [-o OUT] [--format epub|pdf] [--no-ace] [--keep-work] [-q]",
-      "description": "Build <slug>.epub by default or <slug>.pdf with --format pdf. Both run source gates. EPUB adds EPUBCheck, Ace and per-chapter word counts; PDF checks resources, internal links and extracted text. EPUB reports use reports/; PDF reports use reports/pdf/. The includes gate appears only on failure. PDF leaves source configuration unchanged.",
+      "description": "Build <slug>.epub by default or <slug>.pdf with --format pdf. Both run source gates. EPUB adds a navigation check, EPUBCheck, Ace and per-chapter word counts; PDF checks resources, internal links and extracted text. EPUB reports use reports/; PDF reports use reports/pdf/. The includes gate appears only on failure. PDF leaves source configuration unchanged.",
       "exit_codes": {
         "0": "Selected book format built; no active gate failed.",
         "1": "Book written, but at least one validation gate failed.",

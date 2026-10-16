@@ -612,7 +612,7 @@ def test_every_build_gate_is_documented_where_builds_are_read():
     root = Path(__file__).resolve().parent.parent
     gates = set(re.findall(r"summary\['gates'\]\['(\w+)'\]", (root / 'src/mdbindery/build.py').read_text(encoding='utf-8')))
     assert {'links', 'navigation', 'epubcheck', 'wordcount', 'pdf'} <= gates, gates
-    docs = ('skills/mdbindery/SKILL.md', 'skills/mdbindery-prepare-repo/SKILL.md', 'docs/building.md')
+    docs = ('skills/mdbindery/SKILL.md', 'skills/mdbindery-prepare-repo/SKILL.md', 'docs/building.md', 'docs/design.md')
     absent = [rel for rel in docs if not (root / rel).is_file()]
     if absent:   # the sdist ships the tests but not the skills or docs
         pytest.skip(f'repository documentation not in this tree: {absent}')
@@ -621,3 +621,21 @@ def test_every_build_gate_is_documented_where_builds_are_read():
         missing = [g for g in sorted(gates - {'pdf'}) if not re.search(rf'^\s*\| `{g}` \|', text, re.M)]
         assert not missing, f'{rel} has no gate row for {missing}'
     assert 'gates.pdf' in tables['skills/mdbindery/SKILL.md']
+    # the lists that summarize the gates elsewhere, where a reader or an agent first meets them
+    epub = sorted(gates - {'pdf'})
+    names = {'epubcheck': 'EPUBCheck', 'ace': 'Ace', 'wordcount': 'word count'}
+    description = re.search(r'^description: (.*)$', tables['skills/mdbindery/SKILL.md'], re.M).group(1)
+    listed = re.search(r'the gates \(([^)]*)\)', description).group(1)
+    assert all(names.get(g, g) in listed for g in epub), listed
+    site = root / 'site'
+    if site.is_dir():
+        cards = re.findall(r'class="gate-name">(\w+) ·', (site / 'index.html').read_text(encoding='utf-8'))
+        assert set(gates) <= set(cards), cards
+        llms = (site / 'llms-full.txt').read_text(encoding='utf-8')
+        numbered = re.findall(r'^\d+\. \*\*`(\w+)`\*\*', llms, re.M)
+        assert set(epub) <= set(numbered), numbered
+        intro = next(line for line in llms.splitlines() if 'share source gates' in line)
+        assert set(epub) <= set(re.findall(r'`(\w+)`', intro)), intro
+    design = (root / 'docs/design.md').read_text(encoding='utf-8')
+    summary = next(line for line in design.splitlines() if line.startswith('mdbindery is a small Python package'))
+    assert all(names.get(g, g).lower() in summary.lower() for g in sorted(set(epub) - {'links', 'images', 'charts', 'includes'})), summary

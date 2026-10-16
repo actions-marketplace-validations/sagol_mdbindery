@@ -1,6 +1,6 @@
 # mdbindery
 
-> Build EPUB 3 ebooks or paginated PDFs from Markdown chapters and mdBook projects. Shared preparation handles links, citations, images, Mermaid, math and tables. EPUB uses EPUBCheck, Ace and per-file word counts; PDF checks resources, internal links and extracted text. Review reports and layout before publishing.
+> Build EPUB 3 ebooks or paginated PDFs from Markdown chapters and mdBook projects. Shared preparation handles links, citations, images, Mermaid, math and tables. EPUB uses a navigation check, EPUBCheck, Ace and per-file word counts; PDF checks resources, internal links and extracted text. Review reports and layout before publishing.
 
 - Released version: `0.2.0`. PDF export requires the optional `pdf` extra.
 - License: MIT
