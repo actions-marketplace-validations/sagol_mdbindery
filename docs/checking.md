@@ -98,7 +98,7 @@ The Markdown report goes to standard output unless `-q` is combined with `--repo
 
 With `--build`, check runs the full build pipeline into a temporary folder (`mdbindery-trial-*`, deleted afterwards) once all the other checks are done, but only if they found no errors. Otherwise the trial build is skipped, and the report says `Trial build: skipped: fix the errors first`.
 
-The trial build runs the same gates as `mdbindery build` ([building.md](building.md#gates)): links, images, includes, charts, EPUBCheck, Ace, and the word count. Its results are reported as:
+The trial build runs the same gates as `mdbindery build` ([building.md](building.md#gates)): links, images, includes, charts, navigation, EPUBCheck, Ace, and the word count. Its results are reported as:
 
 | Code | From |
 |---|---|

@@ -4,7 +4,7 @@
 
 Build EPUB 3 ebooks or paginated PDFs from a folder or GitHub repository of Markdown chapters.
 
-mdbindery is built for books written the GitHub way: one Markdown file per chapter, relative links between files, images in the repository, citations as `[1]` with reference definitions. The source stays readable on GitHub. Both formats share chapter preparation and source checks. EPUB builds run EPUBCheck and DAISY Ace; PDF builds check rendered resources, links and extracted text.
+mdbindery is built for books written the GitHub way: one Markdown file per chapter, relative links between files, images in the repository, citations as `[1]` with reference definitions. The source stays readable on GitHub. Both formats share chapter preparation and source checks. EPUB builds check page titles and contents labels, run EPUBCheck and DAISY Ace, and compare word counts; PDF builds check rendered resources, links and extracted text.
 
 ```
 mdbindery check https://github.com/OWNER/REPO     # what to fix, file by file and line by line
@@ -34,7 +34,7 @@ EPUB remains the default. PDF export is available in 0.2.0 with the `pdf` extra.
 
 Both output formats check source links, images, charts and mdBook includes.
 
-- `mdbindery build` adds EPUBCheck, Ace and per-chapter word counts. Reports go to `reports/`. Missing Ace after an install with `--no-node` produces a warning.
+- `mdbindery build` adds a navigation check, EPUBCheck, Ace and per-chapter word counts. Reports go to `reports/`. Missing Ace after an install with `--no-node` produces a warning.
 - `mdbindery build --format pdf` checks loaded resources and internal links, parses the PDF and compares extracted text with generated HTML. Reports go to `reports/pdf/`. EPUBCheck and Ace do not run for PDF.
 
 A failed gate returns exit status 1 and keeps the generated book for inspection. PDF renderer errors return exit status 2 and preserve an older PDF. Inspect PDF layout before sharing; text checks cannot prove correct pagination or absence of clipping. PDF/A and PDF/UA conformance are not claimed.

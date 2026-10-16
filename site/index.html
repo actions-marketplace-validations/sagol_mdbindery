@@ -95,7 +95,7 @@
           "Transforms invisible numeric reference definitions [1] into linked reference lists",
           "Renders Mermaid diagrams to PNG with automatic alt text",
           "Converts wide tables into phone-readable row cards for configured files",
-          "Runs configured EPUB validation gates (links, images, charts, includes, W3C EPUBCheck 5.4.0, DAISY Ace 1.4.6, and per-file word count) and records pass, warn, fail, or skipped states in reports/build.json; includes is recorded only on failure",
+          "Runs configured EPUB validation gates (links, images, charts, includes, navigation, W3C EPUBCheck 5.4.0, DAISY Ace 1.4.6, and per-file word count) and records pass, warn, fail, or skipped states in reports/build.json; includes is recorded only on failure",
           "PDF checks staged resources, internal links and extracted text; reports use reports/pdf/",
           "Produces byte-identical EPUB builds when built from the same commit with the same tools, fonts, and saved metadata.identifier",
           "Ships SKILL.md files for AI coding agents (Claude Code, Codex, Cursor, Antigravity)"
@@ -226,7 +226,7 @@
         <h1 id="hero-heading">Build EPUB ebooks and PDFs from Markdown.</h1>
 
         <p class="hero-lead">
-          <strong>mdbindery</strong> turns Markdown chapters or mdBook projects into EPUB 3 ebooks or paginated PDFs. Both formats share chapter links, citations, images, Mermaid diagrams and table conversion. EPUB runs EPUBCheck and DAISY Ace; PDF checks resources, links and extracted text. Review reports and layout before sharing.
+          <strong>mdbindery</strong> turns Markdown chapters or mdBook projects into EPUB 3 ebooks or paginated PDFs. Both formats share chapter links, citations, images, Mermaid diagrams and table conversion. EPUB checks page titles and contents labels, runs EPUBCheck and DAISY Ace, and compares word counts; PDF checks resources, links and extracted text. Review reports and layout before sharing.
         </p>
 
         <p>EPUB remains the default. PDF export is available with the optional <code>pdf</code> extra. <a href="#pdf-install">Set up PDF export</a>.</p>
@@ -479,7 +479,7 @@ mdbindery build ./my-book --format pdf</code></pre>
           <span class="section-eyebrow">Build checks</span>
           <h2 id="pipeline-heading" class="section-title">Validation for each output format</h2>
           <p class="section-desc">
-            Both formats check links, images, charts and includes. EPUB adds EPUBCheck, Ace and per-chapter word counts; PDF adds resource, internal-link and extracted-text checks. Reports use <code>dist/reports/build.json</code> for EPUB or <code>dist/reports/pdf/build.json</code> for PDF. The <code>includes</code> entry appears only on failure. A failed gate returns status <code>1</code>.
+            Both formats check links, images, charts and includes. EPUB adds a navigation check, EPUBCheck, Ace and per-chapter word counts; PDF adds resource, internal-link and extracted-text checks. Reports use <code>dist/reports/build.json</code> for EPUB or <code>dist/reports/pdf/build.json</code> for PDF. The <code>includes</code> entry appears only on failure. A failed gate returns status <code>1</code>.
           </p>
         </div>
 
@@ -514,6 +514,14 @@ mdbindery build ./my-book --format pdf</code></pre>
               <span class="badge badge-pass">Gate</span>
             </div>
             <p>Reports failed <code>mdBook</code> <code>{{#include}}</code> expansions (missing file, cycle, or size limit). The <code>includes</code> gate appears in <code>build.json</code> only with <code>result: "fail"</code>. It is omitted when no include directive fails; no <code>pass</code> entry is emitted.</p>
+          </div>
+
+          <div class="gate-card">
+            <div class="gate-header">
+              <span class="gate-name">navigation · EPUB</span>
+              <span class="badge badge-pass">Gate</span>
+            </div>
+            <p>Checks the finished EPUB: fails when a page has no title or is titled with a file name, or an entry in the contents or the NCX has no label; a heading that really reads like a file name passes. EPUBCheck and Ace check neither. Never skipped.</p>
           </div>
 
           <div class="gate-card">

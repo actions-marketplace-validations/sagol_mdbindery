@@ -198,7 +198,7 @@ def parser():
 
     b = sub.add_parser('build', help='build EPUB or PDF and run format-specific checks',
                        description='Build <output_dir>/<slug>.epub (default) or .pdf. Both check source links, images and charts. '
-                                   'EPUB uses EPUBCheck, Ace and word counts; PDF checks rendered resources and text. Exit 0 when every gate passes, '
+                                   'EPUB uses a navigation check, EPUBCheck, Ace and word counts; PDF checks rendered resources and text. Exit 0 when every gate passes, '
                                    '1 when a gate fails, 2 on a config or input error.')
     b.add_argument('path', nargs='?', default=None,
                    help='book folder or config file (default: the --config file\'s folder, else the current folder)')
@@ -220,7 +220,7 @@ def parser():
     c.add_argument('-c', '--config', help='config file to use instead of the one in the book folder')
     c.add_argument('--ref', help='branch or tag to check (repository URLs)')
     c.add_argument('--build', action='store_true',
-                   help='also run a trial build with EPUBCheck, Ace, and the word count (in a temporary folder)')
+                   help='also run a trial build with every EPUB gate, EPUBCheck, Ace and the word count included (in a temporary folder)')
     c.add_argument('--no-render', action='store_true', help='do not test-render Mermaid charts (faster)')
     c.add_argument('--report', metavar='FILE', help='write the Markdown report to FILE')
     c.add_argument('--json', metavar='FILE', help='write the JSON report to FILE')
