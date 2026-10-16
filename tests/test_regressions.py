@@ -607,6 +607,99 @@ def test_headings_that_read_like_fallback_titles_pass(tmp_path):
     assert pages['ch001.xhtml'] == 'ch001.xhtml' and pages['ch002.xhtml'] == 'book'
 
 
+def _landmark_fields(epub):
+    """The landmarks' labels by kind, the guide's titles by type, the NCX cover id, the manifest's cover-image id
+    and the cover SVG's aria-label."""
+    with zipfile.ZipFile(epub) as z:
+        read = lambda end: next(z.read(n).decode() for n in z.namelist() if n.endswith(end))
+        nav, opf, ncx, cover = read('nav.xhtml'), read('.opf'), read('.ncx'), read('cover.xhtml')
+    marks = re.search(r'<nav epub:type="landmarks".*?</nav>', nav, re.S).group(0)
+    labels = {k: v.strip() for v, k in [(m.group(2), m.group(1)) for m in
+                                        re.finditer(r'<a [^>]*epub:type="(\w+)"[^>]*>(.*?)</a>', marks, re.S)]}
+    guide = dict(re.findall(r'<reference type="([\w-]+)" title="([^"]*)"', opf))
+    image = re.search(r'<item properties="cover-image" id="([^"]+)"', opf).group(1)
+    ncx_cover = re.search(r'<meta name="cover" content="([^"]*)"', ncx).group(1)
+    alt = re.search(r'<svg\b[^>]*aria-label="([^"]*)"', cover)
+    return labels, guide, ncx_cover, image, alt.group(1) if alt else None
+
+
+@needs_pandoc
+def test_landmarks_guide_and_cover_by_language_and_option(tmp_path):
+    cases = (('ru', '', {'titlepage': 'Титульный лист', 'cover': 'Обложка', 'toc': 'Содержание'}, False),
+             ('en', '', {'titlepage': 'Title Page', 'cover': 'Cover', 'toc': 'Contents'}, False),
+             ('de', '  toc_title: Inhalt\n', {'titlepage': 'Title Page', 'cover': 'Cover', 'toc': 'Inhalt'}, True),
+             ('de', '  toc_title: Inhalt\n  cover_title: Umschlag\n  title_page_title: Titelseite\n',
+              {'titlepage': 'Titelseite', 'cover': 'Umschlag', 'toc': 'Inhalt'}, False))
+    for i, (lang, extra, want, warned) in enumerate(cases):
+        book = _book(tmp_path / f'b{i}', {'01-a.md': '# A\n\nText.\n'},
+                     f'  lang: {lang}\n  authors: [A. Author]\noptions:\n  ace: false\n  epubcheck: false\n{extra}')
+        log = []
+        s = build(config.load(book), out_dir=tmp_path / f'o{i}', run_ace=False, log=log.append)
+        assert s['ok'], s['gates']['navigation']
+        labels, guide, ncx_cover, image, alt = _landmark_fields(s['epub'])
+        assert labels == want, (lang, labels)
+        assert guide['cover'] == want['cover'] and guide['toc'] == want['toc'], guide
+        assert ncx_cover == image, (ncx_cover, image)
+        assert alt == ('' if warned else f"{want['cover']}. ") + 'T. A. Author', alt   # no label known: title and authors
+        assert any('set options.cover_title and options.title_page_title' in line for line in log) == warned, log
+    with pytest.raises(config.ConfigError):
+        config.load(_book(tmp_path / 'bad', {'01-a.md': '# A\n'}, 'options:\n  cover_title: [a]\n'))
+
+
+@needs_pandoc
+def test_landmark_labels_with_markup_characters_and_padding(tmp_path):
+    import html
+    cases = (("  cover_title: 'Cover > main & \"x\"'\n  title_page_title: '<Title>'\n",
+              {'cover': 'Cover > main & "x"', 'titlepage': '<Title>', 'toc': 'Contents'}),
+             ("  toc_title: ' Contents '\n  cover_title: '  Cover  '\n",
+              {'cover': 'Cover', 'titlepage': 'Title Page', 'toc': 'Contents'}),
+             ("  cover_title: 'Cover &amp; art'\n  title_page_title: '&copy; page'\n  toc_title: 'Contents &amp; index'\n",
+              {'cover': 'Cover &amp; art', 'titlepage': '&copy; page', 'toc': 'Contents &amp; index'}))
+    for i, (extra, want) in enumerate(cases):
+        book = _book(tmp_path / f'b{i}', {'01-a.md': '# A\n\nText.\n'},
+                     f'options:\n  ace: false\n  epubcheck: false\n{extra}')
+        s = build(config.load(book), out_dir=tmp_path / f'o{i}', run_ace=False, log=_quiet)
+        assert s['ok'], s['gates']['navigation']
+        labels, guide, _, _, alt = _landmark_fields(s['epub'])
+        assert {k: ' '.join(html.unescape(v).split()) for k, v in labels.items()} == want, labels
+        assert ' '.join(html.unescape(guide['cover']).split()) == want['cover'], guide
+        assert html.unescape(alt).startswith(want['cover'] + '. T'), alt
+
+
+def test_navigation_gate_reports_landmarks_guide_ncx_cover_and_cover_alternative(tmp_path):
+    from mdbindery.build import gate_navigation
+    epub = tmp_path / 'b.epub'
+    page = '<html><head><title>A</title></head><body><h1>A</h1></body></html>'
+    nav = ('<html><head><title>T</title></head><body><nav epub:type="toc"><ol><li><a href="text/ch001.xhtml">A</a>'
+           '</li></ol></nav><nav epub:type="landmarks"><ol><li><a href="text/title_page.xhtml" epub:type="titlepage">'
+           ' </a></li><li><a href="text/cover.xhtml" epub:type="cover">Cover</a></li></ol></nav></body></html>')
+    opf = ('<package><manifest><item properties="cover-image" id="file0_jpg" href="media/file0.jpg" />'
+           '<item id="cover_xhtml" href="text/cover.xhtml" /></manifest>'
+           '<guide><reference type="toc" title="" href="nav.xhtml" /></guide></package>')
+    with zipfile.ZipFile(epub, 'w') as z:
+        z.writestr('EPUB/nav.xhtml', nav)
+        z.writestr('EPUB/content.opf', opf)
+        z.writestr('EPUB/text/ch001.xhtml', page)
+        z.writestr('EPUB/text/cover.xhtml', page.replace('<h1>A</h1>', '<svg viewBox="0 0 1 1"><image href="../media/file0.jpg" /></svg>'))
+        z.writestr('EPUB/toc.ncx', '<ncx><head><meta name="cover" content="cover_jpg" /></head><navMap><navPoint>'
+                   '<navLabel><text>A</text></navLabel></navPoint></navMap></ncx>')
+    cfg = config.load(_book(tmp_path / 'b', {'01-a.md': '# A\n'}, '  lang: ru\n'))
+    g = gate_navigation(epub, cfg, _quiet)
+    assert g['result'] == 'fail', g
+    want = ('landmark titlepage has no label', "landmark cover reads 'Cover', not 'Обложка'",
+            'guide entry toc has no title', 'the cover image has no text alternative', "names 'cover_jpg'")
+    assert all(any(w in p for p in g['problems']) for w in want) and len(g['problems']) == len(want), g['problems']
+    # a label shows the configured text literally: entity-like text in the option is text, never markup
+    with zipfile.ZipFile(epub, 'w') as z:
+        z.writestr('EPUB/nav.xhtml', nav.replace('> </a>', '>Титульный лист</a>').replace('>Cover<', '>Cover &amp; art<'))
+        z.writestr('EPUB/content.opf', opf.replace('title=""', 'title="Содержание"'))
+        z.writestr('EPUB/text/ch001.xhtml', page)
+    for option, ok in (('Cover &amp; art', False), ('Cover & art', True)):
+        cfg = config.load(_book(tmp_path / f'c{ok}', {'01-a.md': '# A\n'}, f"  lang: ru\noptions:\n  cover_title: '{option}'\n"))
+        g = gate_navigation(epub, cfg, _quiet)
+        assert (g['result'] == 'pass') == ok, (option, g)
+
+
 def test_every_build_gate_is_documented_where_builds_are_read():
     from pathlib import Path
     root = Path(__file__).resolve().parent.parent
@@ -639,3 +732,12 @@ def test_every_build_gate_is_documented_where_builds_are_read():
     design = (root / 'docs/design.md').read_text(encoding='utf-8')
     summary = next(line for line in design.splitlines() if line.startswith('mdbindery is a small Python package'))
     assert all(names.get(g, g).lower() in summary.lower() for g in sorted(set(epub) - {'links', 'images', 'charts', 'includes'})), summary
+    # what the navigation gate checks, wherever its row or card describes it
+    rows = [next(line for line in text.splitlines() if re.match(r'^\s*\| `navigation` \|', line)) for text in tables.values()]
+    if site.is_dir():
+        rows.append(next(line for line in (site / 'llms-full.txt').read_text(encoding='utf-8').splitlines()
+                         if re.match(r'^\d+\. \*\*`navigation`\*\*', line)))
+        html = (site / 'index.html').read_text(encoding='utf-8')
+        rows.append(re.search(r'navigation · EPUB.*?<p>(.*?)</p>', html, re.S).group(1))
+    for row in rows:
+        assert 'landmark' in row.lower() and 'cover' in row.lower(), row

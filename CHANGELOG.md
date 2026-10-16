@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- EPUB landmarks, guide and cover: the landmarks list labels the cover and the title page, and the guide its cover entry, in the book's language (`Обложка`, `Титульный лист` for `lang: ru`), and both label the contents by `options.toc_title`; new `options.cover_title` and `options.title_page_title` set them for other languages, and the build warns when they are missing. The older NCX names the manifest's cover image instead of a missing `cover_jpg`, and the cover image gets a text alternative. The `navigation` gate now checks all of these.
 - Every list of the EPUB gates names `navigation`: the `mdbindery` skill's description, the README, the CLI help, the docs and the documentation site; the gate test also checks the skill description, the site's gate cards and the numbered gate list for agents.
 - The `mdbindery` and `mdbindery-prepare-repo` skills list the `navigation` gate, and the `mdbindery` skill says what heads and titles the contents page (`options.toc_title`); a test now checks that every gate the build runs is in both skills and in `docs/building.md`.
 - EPUB navigation: the contents page is titled with the book title instead of `book`, the title page's NCX entry is no longer blank, and each chapter's page title is its contents label or first heading instead of its file name (`ch002.xhtml`).

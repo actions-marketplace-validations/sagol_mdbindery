@@ -50,7 +50,8 @@ pandoc -f json -t json --lua-filter book.lua               -> work/linked.json
 linked.json + metadata as literal MetaString values        -> work/book.json
 pandoc -f json -t epub3 book.json (SOURCE_DATE_EPOCH set)  -> work/book.epub
   with work/book.css and work/cover.jpg
-postprocess(): accessibility metadata, numbered endnotes,
+postprocess(): accessibility metadata, page titles, landmark and guide labels,
+  the NCX cover id, the cover's text alternative, numbered endnotes,
   normalized zip written to <slug>.epub.part, then renamed -> <out>/<slug>.epub
 gates: charts, links, images, includes, navigation, EPUBCheck, Ace, word count
                                                            -> <out>/reports/
@@ -310,7 +311,7 @@ Links phase (`work/links.ctx.json`): `{"h1": {"k00": "k00-writing-a-book-in-mark
 | `links` | `pass`, or `fail` (`warn` with `strict_links: false`), with `unresolved` and `missing_files` counts |
 | `images` | `pass` or `fail`, with `problems`: file-report image entries whose status is not `ok`, plus `file` |
 | `includes` | present only on failure: `fail` with `problems` (`{file, directive, error}`) |
-| `navigation` | `pass` or `fail`, with `problems`: one line per page whose title is empty or a fallback file name that differs from its expected title, and per contents or NCX entry with no label |
+| `navigation` | `pass` or `fail`, with `problems`: one line per page whose title is empty or a fallback file name that differs from its expected title, per contents, NCX, landmark or guide entry with no label, per landmark or guide label that differs from its expected one, for an NCX cover id missing from the manifest, and for a cover image with no text alternative |
 | `epubcheck` | `pass` or `fail` with `counts` (severity to count) and `messages` (the first 50 as `{severity, id, message, path, line}`); `fail` with `detail` `EPUBCheck not available` (no Java 11+ or no jar) or `EPUBCheck did not produce a report: ...`; `skipped` with `options.epubcheck: false` |
 | `ace` | `pass` or `fail` with `violations` (`{impact, rule, count}`; `rule` is what `ace_waivers` matches); blocking are `critical` and `serious` rules not waived; `warn` with `detail: "Ace not installed"`; `fail` with `detail` (up to 1000 characters of Ace's output) when Ace runs but writes no report; `skipped` with `--no-ace` or `options.ace: false` |
 | `wordcount` | `pass` or `fail`, with `worst` (largest absolute `diff` among failing files, else 0), `failing` (file names), and `files` (`{source, epub, diff}` per file, `diff` = `(compared - source) / source` rounded to 4 places; files with cards add `card_labels` and `compared`, otherwise `compared` is `epub`) |

@@ -33,7 +33,7 @@ DEFAULTS = {
                                'Литература', 'Источники', 'Примечания', 'Список литературы'],
         'reference_heading_new': 'References',
         'drop_lines': [],
-        'toc': True, 'toc_depth': 2, 'split_level': 1, 'toc_title': '',
+        'toc': True, 'toc_depth': 2, 'split_level': 1, 'toc_title': '', 'cover_title': '', 'title_page_title': '',
         'mermaid': 'png', 'mermaid_scale': 2, 'mermaid_alt_prefix': 'Chart', 'mermaid_today_marker': False,
         'mermaid_theme': 'neutral', 'mermaid_font_size': 18,
         'cards': {'files': [], 'min_columns': 9, 'title_columns': 1},
@@ -74,6 +74,19 @@ DEFAULT_TOC_TITLE = {'en': 'Contents', 'ru': 'Содержание'}
 def toc_title(opts):
     """The contents heading: options.toc_title, else the built-in one for the book's language, else ''."""
     return opts.get('toc_title') or DEFAULT_TOC_TITLE.get(opts.get('_summary_lang', 'en'), '')
+
+
+# the cover's and the title page's labels in the landmarks, and in the guide's entries for them (pandoc's guide has
+# a cover entry and no title-page entry); other languages set options.cover_title and options.title_page_title
+DEFAULT_LANDMARK_TITLES = {'en': {'cover': 'Cover', 'titlepage': 'Title Page'},
+                           'ru': {'cover': 'Обложка', 'titlepage': 'Титульный лист'}}
+
+
+def landmark_title(opts, kind):
+    """The label of the cover ('cover') or the title page ('titlepage') in the landmarks and the guide: the option,
+    trimmed, else the built-in one for the book's language, else ''."""
+    key = {'cover': 'cover_title', 'titlepage': 'title_page_title'}[kind]
+    return (opts.get(key) or '').strip() or DEFAULT_LANDMARK_TITLES.get(opts.get('_summary_lang', 'en'), {}).get(kind, '')
 
 
 FILE_KEYS = {'file', 'role', 'title', 'drop_sections', 'mermaid_alt', 'key'}
@@ -501,7 +514,7 @@ def validate(data):
     for k in ('toc', 'strict_links', 'epubcheck', 'ace', 'mermaid_today_marker'):
         o[k] = _bool(o.get(k), f'options.{k}')
     for k in ('css', 'extra_css', 'reference_heading_new', 'mermaid_alt_prefix', 'accessibility_summary',
-              'conformance_claim', 'highlight_style', 'mermaid_theme', 'toc_title'):
+              'conformance_claim', 'highlight_style', 'mermaid_theme', 'toc_title', 'cover_title', 'title_page_title'):
         o[k] = _str(o.get(k), f'options.{k}')
     if o['highlight_style'] and not re.fullmatch(r'[\w-]+', o['highlight_style']):
         raise ConfigError('options.highlight_style must be a pandoc style name (e.g. monochrome, tango) or none')
