@@ -261,6 +261,7 @@ Per-file section removal is `drop_sections` under [files](#files). `mdbindery ch
 |---|---|---|---|---|
 | `toc` | boolean | `true` | | Put a table of contents page into the reading order, after the title page. With `false` the EPUB still has its navigation document, so the reader's contents menu works, but no contents page appears in the text. |
 | `toc_depth` | whole number | `2` | 1 to 6 | Heading levels shown in the table of contents and the navigation document. |
+| `toc_title` | text | `Contents` or `Содержание`, by `metadata.lang` | | Heading of the contents page. Set it for books in other languages; without it their contents page is headed with the book title and the build log says so. |
 | `split_level` | whole number | `1` | 1 to 6 | Heading level at which a new XHTML file starts inside the EPUB. |
 
 The word-count gate compares the whole book in reading order, so any `split_level` works with it.
@@ -354,6 +355,7 @@ mdbindery adds the other schema.org accessibility properties itself: access mode
 | `slug` | The title in lowercase, with every run of characters other than letters and digits turned into one hyphen. Letters of every script are kept, so a Russian title gives a Cyrillic slug; a title with no letters or digits gives `book`. | not reported |
 | `metadata.identifier` | Generated at build time (see [The identifier](#the-identifier)). | MB124 |
 | `options.accessibility_summary` | The built-in text for the book's language. | not reported |
+| `options.toc_title` | `Contents` for English, `Содержание` for Russian. | a build warning for other languages |
 
 Inferred values appear in `facts.inferred` of the JSON report ([checking.md](checking.md#json-report)). A report on a folder without a configuration file also contains a suggested `mdbindery.yaml` built from these values.
 

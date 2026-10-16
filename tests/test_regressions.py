@@ -532,3 +532,76 @@ def test_one_tool_install_at_a_time(tmp_path, monkeypatch):
         installer._lock()
     lock.unlink()
     installer._lock().unlink()
+
+
+def _nav_fields(epub):
+    """What reading systems show from the navigation: page titles, contents heading and NCX labels."""
+    with zipfile.ZipFile(epub) as z:
+        pages = {n.rsplit('/', 1)[-1]: re.search(r'<title>(.*?)</title>', z.read(n).decode(), re.S).group(1)
+                 for n in z.namelist() if n.endswith('.xhtml')}
+        nav = next(z.read(n).decode() for n in z.namelist() if n.endswith('nav.xhtml'))
+        ncx = next(z.read(n).decode() for n in z.namelist() if n.endswith('.ncx'))
+        opf = next(z.read(n).decode() for n in z.namelist() if n.endswith('.opf'))
+    heading = re.search(r'<nav epub:type="toc"[^>]*>\s*<h1[^>]*>(.*?)</h1>', nav, re.S).group(1)
+    return pages, heading, re.findall(r'<navLabel>\s*<text>(.*?)</text>', ncx, re.S), opf
+
+
+@needs_pandoc
+def test_navigation_titles_and_localized_contents(tmp_path):
+    files = {'01-a.md': '# Глава *первая*[^1]\n\nТекст.\n\n[^1]: Сноска.\n', '02-b.md': '# Глава вторая\n\nТекст.\n'}
+    book = _book(tmp_path / 'ru', files, None)
+    (book / 'mdbindery.yaml').write_text(
+        f'metadata:\n  title: Двадцать восемь дней\n  subtitle: Книга вторая\n  lang: ru\n  identifier: {ID}\n'
+        'options:\n  ace: false\n', encoding='utf-8')
+    s = build(validate_if_installed(config.load(book)), out_dir=tmp_path / 'o', run_ace=False, log=_quiet)
+    assert s['ok'], s['failed_gates']
+    pages, heading, labels, opf = _nav_fields(s['epub'])
+    assert pages['nav.xhtml'] == 'Двадцать восемь дней' and heading == 'Содержание'
+    assert labels == ['Двадцать восемь дней', 'Глава первая', 'Глава вторая']
+    assert pages['ch001.xhtml'] == 'Глава первая' and pages['ch002.xhtml'] == 'Глава вторая'
+    assert not any(t.endswith('.xhtml') or t == 'book' for t in pages.values()), pages
+    assert '<meta refines="#epub-title-2" property="title-type">subtitle</meta>' in opf
+    assert s['gates']['navigation'] == {'result': 'pass', 'problems': []}
+
+
+@needs_pandoc
+def test_contents_heading_by_language_and_option(tmp_path):
+    out = []
+    for lang, extra, want in (('en', '', 'Contents'), ('ru', '  toc_title: Оглавление\n', 'Оглавление'),
+                              ('de', '', 'T')):
+        book = _book(tmp_path / lang, {'01-a.md': '# A\n\nText.\n'},
+                     f'  lang: {lang}\noptions:\n  ace: false\n  epubcheck: false\n{extra}')
+        log = []
+        s = build(config.load(book), out_dir=tmp_path / f'o-{lang}', run_ace=False, log=log.append)
+        assert s['ok'], s['failed_gates']
+        out.append((lang, _nav_fields(s['epub'])[1], want, any('set options.toc_title' in line for line in log)))
+    assert all(got == want and warned == (lang == 'de') for lang, got, want, warned in out), out
+    with pytest.raises(config.ConfigError):
+        config.load(_book(tmp_path / 'bad', {'01-a.md': '# A\n'}, 'options:\n  toc_title: [a]\n'))
+
+
+def test_navigation_gate_reports_file_name_titles_and_blank_labels(tmp_path):
+    from mdbindery.build import gate_navigation
+    epub = tmp_path / 'b.epub'
+    page = '<html><head><title>{}</title></head><body><h1>A</h1></body></html>'
+    with zipfile.ZipFile(epub, 'w') as z:
+        z.writestr('EPUB/nav.xhtml', page.format('book').replace(
+            '<body>', '<body><nav epub:type="toc"><ol><li><a href="text/ch001.xhtml"> </a></li></ol></nav>'))
+        z.writestr('EPUB/text/ch001.xhtml', page.format('ch001.xhtml'))
+        z.writestr('EPUB/text/ch002.xhtml', page.format('A'))
+        z.writestr('EPUB/toc.ncx', '<navMap><navPoint><navLabel><text></text></navLabel></navPoint>'
+                   '<navPoint><navLabel><text>A</text></navLabel></navPoint></navMap>')
+    cfg = config.load(_book(tmp_path / 'b', {'01-a.md': '# A\n'}, ''))
+    g = gate_navigation(epub, cfg, _quiet)
+    assert g['result'] == 'fail' and len(g['problems']) == 4, g
+    assert any("'ch001.xhtml'" in p for p in g['problems']) and any("'book'" in p for p in g['problems'])
+
+
+@needs_pandoc
+def test_headings_that_read_like_fallback_titles_pass(tmp_path):
+    files = {'01-a.md': '# ch001.xhtml\n\nText.\n', '02-b.md': '# book\n\nText.\n'}
+    book = _book(tmp_path / 'b', files, 'options:\n  ace: false\n  epubcheck: false\n')
+    s = build(config.load(book), out_dir=tmp_path / 'o', run_ace=False, log=_quiet)
+    assert s['ok'], s['gates']['navigation']
+    pages = _nav_fields(s['epub'])[0]
+    assert pages['ch001.xhtml'] == 'ch001.xhtml' and pages['ch002.xhtml'] == 'book'

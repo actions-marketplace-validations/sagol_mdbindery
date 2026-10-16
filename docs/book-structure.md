@@ -269,7 +269,7 @@ Prefer Markdown. HTML is converted at every depth (inside quotes, list items, ta
 
 - Set `metadata.lang` (`en-US`, `ru`, `de`, ...). It drives hyphenation and the reader's dictionary. Without it, mdbindery guesses `ru` or `en-US` from the text (MB122).
 - Typography is kept as written: curly quotes, «guillemets», em and en dashes, non-breaking spaces. mdbindery never "smartens" or changes punctuation.
-- For non-English books also set `options.mermaid_alt_prefix` (for example `Схема`) and, except for Russian, `options.accessibility_summary` in the book's language; the built-in summary exists only in English and Russian. Russian reference headings (Литература, Источники, Примечания, Список литературы) are recognized by default.
+- For non-English books also set `options.mermaid_alt_prefix` (for example `Схема`) and, except for Russian, `options.accessibility_summary` and `options.toc_title` in the book's language; the built-in summary and contents heading exist only in English and Russian. Russian reference headings (Литература, Источники, Примечания, Список литературы) are recognized by default.
 
 ## 12. Metadata and license
 

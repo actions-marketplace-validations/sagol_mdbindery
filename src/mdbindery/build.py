@@ -3,6 +3,7 @@ import datetime
 import json
 import os
 import platform
+import posixpath
 import re
 import shutil
 import subprocess
@@ -318,6 +319,8 @@ def book_metadata(cfg, ident, date):
         meta['belongs-to-collection'] = md['series']
         if md.get('series_position'):
             meta['group-position'] = md['series_position']
+    if config_mod.toc_title(cfg.opts):
+        meta['toc-title'] = config_mod.toc_title(cfg.opts)
     return {k: meta_value(v) for k, v in meta.items()}
 
 
@@ -346,14 +349,61 @@ def number_notes(xhtml):
     return NOTE_RE.sub(repl, xhtml)
 
 
-def postprocess(src_epub, epub, cfg, has_images, epoch, all_alt=True):
-    """Merge accessibility metadata into the OPF, number endnotes, and write a normalized zip."""
+TITLE_RE = re.compile(r'<title>(.*?)</title>', re.S)
+HEADING_RE = re.compile(r'<h([1-6])\b[^>]*>(.*?)</h\1>', re.S)
+NOTE_REF_RE = re.compile(r'<a\b[^>]*\bclass="footnote-ref"[^>]*>.*?</a>', re.S)
+TOC_NAV_RE = re.compile(r'<nav\b[^>]*\bepub:type="toc".*?</nav>', re.S)
+NAV_LINK_RE = re.compile(r'<a\b[^>]*\bhref="([^"#]*)[^"]*"[^>]*>(.*?)</a>', re.S)
+NCX_LABEL_RE = re.compile(r'<navLabel>\s*<text>(.*?)</text>', re.S)
+NCX_TITLE_PAGE_RE = re.compile(r'(<navLabel>\s*<text>)\s*(</text>\s*</navLabel>\s*<content src="[^"]*title_page\.xhtml")')
+
+
+def plain_text(html):
+    """XHTML markup as one line of text: tags and note references removed, entities kept."""
+    return ' '.join(re.sub(r'<[^>]+>', '', NOTE_REF_RE.sub('', html)).split())
+
+
+def toc_labels(nav, nav_name):
+    """Each page's first label in the contents, keyed by its path in the archive."""
+    labels = {}
+    toc = TOC_NAV_RE.search(nav)
+    for href, label in NAV_LINK_RE.findall(toc.group(0) if toc else ''):
+        labels.setdefault(posixpath.normpath(posixpath.join(posixpath.dirname(nav_name), href)), plain_text(label))
+    return labels
+
+
+def fallback_title(t, name, stem):
+    """pandoc's page title when it has none: the page's file name, or the input file's name (book)."""
+    return not t.strip() or t.strip() in (posixpath.basename(name), stem)
+
+
+def expected_title(xhtml, label, title):
+    """What a page should be titled: its label, else its first heading, else the book title."""
+    h = HEADING_RE.search(xhtml)
+    return label or (plain_text(h.group(2)) if h else '') or title
+
+
+def page_title(xhtml, name, label, title, stem):
+    """Give a page whose title pandoc left as a file name its expected title."""
+    m = TITLE_RE.search(xhtml)
+    if not m or not fallback_title(m.group(1), name, stem):
+        return xhtml
+    return xhtml[:m.start(1)] + expected_title(xhtml, label, title) + xhtml[m.end(1):]
+
+
+def postprocess(src_epub, epub, cfg, has_images, epoch, all_alt=True, stem='book'):
+    """Merge accessibility metadata into the OPF, set page titles, number endnotes, and write a normalized zip."""
     opts = cfg.opts
     esc = lambda s: s.replace('&', '&amp;').replace('<', '&lt;')
+    title = esc(cfg.meta['title'])
     with zipfile.ZipFile(src_epub) as zin:
         names = zin.namelist()
         opf_name = next(n for n in names if n.endswith('.opf'))
         opf = zin.read(opf_name).decode('utf-8')
+        # pandoc reads no plain title from the structured one the OPF needs, so it names the contents page after
+        # the input file, leaves the title page's contents entry blank and titles each chapter by its file name
+        nav_name = next((n for n in names if n.endswith('nav.xhtml')), None)
+        labels = toc_labels(zin.read(nav_name).decode('utf-8'), nav_name) if nav_name else {}
         wanted = [('schema:accessMode', 'textual'), ('schema:accessModeSufficient', 'textual'),
                   ('schema:accessibilityFeature', 'tableOfContents'),
                   ('schema:accessibilityFeature', 'readingOrder'),
@@ -395,10 +445,49 @@ def postprocess(src_epub, epub, cfg, has_images, epoch, all_alt=True):
                 data = zin.read(n)
                 if n == opf_name:
                     data = opf.encode('utf-8')
-                elif n.endswith('.xhtml') and b'epub:type="footnote"' in data:
-                    data = number_notes(data.decode('utf-8')).encode('utf-8')
+                elif n.endswith('.xhtml'):
+                    # the contents page takes the book title, as pandoc gives it for a plain title
+                    text = page_title(data.decode('utf-8'), n, title if n == nav_name else labels.get(n), title, stem)
+                    if 'epub:type="footnote"' in text:
+                        text = number_notes(text)
+                    data = text.encode('utf-8')
+                elif n.endswith('.ncx'):
+                    data = NCX_TITLE_PAGE_RE.sub(lambda m: m.group(1) + title + m.group(2),
+                                                 data.decode('utf-8')).encode('utf-8')
                 zout.writestr(zinfo(n, zipfile.ZIP_DEFLATED), data)
     tmp.replace(epub)
+
+
+def gate_navigation(epub, cfg, log, stem='book'):
+    """Every page has a title and every contents entry a label; EPUBCheck and Ace check neither."""
+    title = cfg.meta['title'].replace('&', '&amp;').replace('<', '&lt;')
+    problems = []
+    with zipfile.ZipFile(epub) as z:
+        names = z.namelist()
+        nav_name = next((n for n in names if n.endswith('nav.xhtml')), None)
+        page_labels = toc_labels(z.read(nav_name).decode('utf-8'), nav_name) if nav_name else {}
+        for n in names:
+            if n.endswith('.xhtml'):
+                text = z.read(n).decode('utf-8')
+                m = TITLE_RE.search(text)
+                t = m.group(1) if m else ''
+                # a heading may itself read "book" or "ch001.xhtml": only an unexpected fallback is a problem
+                expected = expected_title(text, title if n == nav_name else page_labels.get(n), title)
+                if fallback_title(t, n, stem) and t.strip() != expected:
+                    problems.append(f'{n}: page title is {t.strip()!r}' if t.strip() else f'{n}: no page title')
+                if n.endswith('nav.xhtml'):
+                    toc = TOC_NAV_RE.search(text)
+                    empty = [href for href, label in NAV_LINK_RE.findall(toc.group(0) if toc else '')
+                             if not plain_text(label)]
+                    problems += [f'{n}: contents entry for {href} has no label' for href in empty]
+            elif n.endswith('.ncx'):
+                labels = NCX_LABEL_RE.findall(z.read(n).decode('utf-8'))
+                problems += [f'{n}: entry {i} has no label' for i, label in enumerate(labels, 1) if not label.strip()]
+    for p in problems:
+        log(f'  NAVIGATION: {p}')
+    log('  navigation: page titles and contents labels set' if not problems else
+        f'  navigation: {len(problems)} problem(s)')
+    return {'result': 'fail' if problems else 'pass', 'problems': problems}
 
 
 def collect_ace(report):
@@ -778,11 +867,18 @@ def build(cfg, out_dir=None, run_ace=True, keep_work=False, log=print, analysis=
             for line in warnings:
                 log(f'  pandoc: {line}')
             summary['pandoc_warnings'] = warnings
-            postprocess(raw_epub, artifact, cfg, has_images, epoch, all_alt)
+            postprocess(raw_epub, artifact, cfg, has_images, epoch, all_alt, stem=book_json.stem)
             summary['epub'] = str(artifact)
             summary['cover'] = str(store_cover)
             log(f'  built {artifact} ({artifact.stat().st_size // 1024} KB)')
+            if opts['toc'] and not config_mod.toc_title(opts):
+                log(f"  warning: no built-in contents heading for language '{opts.get('_summary_lang')}'; "
+                    'the contents page is headed with the book title (set options.toc_title)')
             done('epub')
+
+            stage = 'navigation'
+            summary['gates']['navigation'] = gate_navigation(artifact, cfg, log, stem=book_json.stem)
+            done('navigation')
 
             stage = 'epubcheck'
             if opts.get('epubcheck', True):
