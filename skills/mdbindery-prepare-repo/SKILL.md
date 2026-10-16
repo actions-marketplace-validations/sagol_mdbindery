@@ -13,7 +13,7 @@ The authoritative rules are in `docs/book-structure.md`, `docs/checking.md`, and
 
 - A repository or folder of Markdown files should become an ebook and has never passed `mdbindery check`.
 - The user wants the reading order, headings, links, citations, images, tables, charts, or HTML fixed for an EPUB.
-- A build fails a gate (links, images, charts, includes, EPUBCheck, Ace, word count) and the cause is in the Markdown or the configuration.
+- A build fails a gate (links, images, charts, includes, navigation, EPUBCheck, Ace, word count) and the cause is in the Markdown or the configuration.
 
 Use the `mdbindery` skill instead when the book is already clean and the task is only to install, check, build, or preview. This skill does not cover editing prose (style, grammar, facts) or converting Word, LaTeX, or AsciiDoc to Markdown.
 
@@ -62,7 +62,7 @@ How mdbindery reads it:
 - Headings get GitHub-style anchors. Links between files become internal EPUB links; a link to a missing anchor or file fails the build.
 - Reference definitions with numeric labels (`[1]: URL "Title"`) become a visible numbered list under the file's References heading, and every `[1]` links to its entry.
 - Images are embedded. Where an image sits (inside a sentence or alone in a paragraph) and its title decide whether it becomes an inline icon, a block image, a figure with a caption, or a full-page image.
-- Gates: links, images, charts, includes, EPUBCheck, Ace, and a per-file word count. The book is done when `mdbindery build` prints `BUILD OK` with no gate skipped or at `warn`.
+- Gates: links, images, charts, includes, navigation, EPUBCheck, Ace, and a per-file word count. The book is done when `mdbindery build` prints `BUILD OK` with no gate skipped or at `warn`.
 
 ## Procedure
 
@@ -524,6 +524,7 @@ mdbindery recognizes an mdBook (MB130): a `book.toml` in the book folder or the 
    | `images` | `IMAGE missing: ...`, `IMAGE remote: ...`, `IMAGE outside: ...` | step 8 |
    | `charts` | `CHART in ... failed to render` | step 10 |
    | `includes` | `INCLUDE in ... not expanded (...)` | step 13 |
+   | `navigation` | `NAVIGATION: EPUB/text/chNNN.xhtml: page title is 'chNNN.xhtml'` or `NAVIGATION: EPUB/toc.ncx: entry N has no label` | a heading with no text: give it one |
    | `epubcheck` | the message id and the path inside the EPUB (`EPUB/text/chNNN.xhtml`; with one `#` heading per file and `split_level: 1`, `ch001` is the first file of the reading order); `NOT RUN` means no Java 11+ | fix the source at that place; `mdbindery install-tools` for Java |
    | `ace` | `dist/reports/ace/report.html` | fix the source (alt text, headings, language); waive a rule in `ace_waivers` only with approval |
    | `wordcount` | `word count: FAILED: ... FILE A -> B words (+x%)` | text was lost (negative) or duplicated (positive): run `mdbindery build --keep-work`, compare `kNN.md` in the printed folder (the prepared source of the file with key `kNN`) with the chapter in the EPUB; usual causes are unclosed HTML, a tag that swallows text, or HTML around Markdown |
