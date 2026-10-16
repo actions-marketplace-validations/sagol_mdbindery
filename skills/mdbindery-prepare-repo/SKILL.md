@@ -208,6 +208,8 @@ mdbindery init --force    # rewrite it; keeps metadata, identifier, cover, files
 | `css`, `extra_css`, `embed_fonts` | empty | the author supplies styling or fonts (paths relative to the config; they must exist) |
 | `accessibility_summary` | built-in English or Russian text, by `lang` | books in other languages |
 | `toc_title` | `Contents` or `Содержание`, by `lang` | books in other languages |
+| `cover_title` | `Cover` or `Обложка`, by `lang` | books in other languages |
+| `title_page_title` | `Title Page` or `Титульный лист`, by `lang` | books in other languages |
 | `conformance_claim` | empty | the author has an accessibility conformance statement |
 | `strict_links`, `epubcheck`, `ace` | `true` | never turn these off to get a pass |
 | `ace_waivers` | `[]` | only with the author's approval, rule by rule |
@@ -490,7 +492,7 @@ mdbindery recognizes an mdBook (MB130): a `book.toml` in the book folder or the 
 - Rights: `metadata.rights` is filled from a LICENSE, LICENSE.md, LICENSE.txt, LICENCE, or COPYING file in the book folder, then at the repository root. Recognized: SPDX lines, Creative Commons licenses with version and variant (CC BY, BY-SA, BY-NC, BY-NC-SA, BY-ND, BY-NC-ND, CC0), GNU GPL, LGPL, AGPL, FDL, MIT, Apache 2.0, BSD, MPL 2.0, The Unlicense. MB123 means none was found: ask the author, and never choose a license yourself. A code license (MIT) may not cover the text; ask when in doubt.
 - MB121 (no author): take the name from `book.toml`, the README, or the LICENSE, and confirm it with the user.
 - MB120 and MB122 (title and language inferred): set `metadata.title` and `metadata.lang` explicitly. `lang` is a BCP 47 tag (`en-US`, `en-GB`, `ru`, `de`, `pt-BR`, `ja`) that drives hyphenation and the reader's dictionary; without it mdbindery guesses only between `ru` and `en-US`.
-- Non-English books: set `options.mermaid_alt_prefix`, `options.accessibility_summary` and `options.toc_title` (built in only for English and Russian), `options.reference_headings` and `options.reference_heading_new` if the reference heading is not in the default list, and `slug` if the author wants an ASCII file name.
+- Non-English books: set `options.mermaid_alt_prefix`, `options.accessibility_summary`, `options.toc_title`, `options.cover_title` and `options.title_page_title` (built in only for English and Russian), `options.reference_headings` and `options.reference_heading_new` if the reference heading is not in the default list, and `slug` if the author wants an ASCII file name.
 - `description` and `subjects` help store listings; propose them, and let the author decide.
 - Typography stays exactly as written: quotes, «guillemets», dashes, non-breaking spaces. mdbindery never changes them, and neither should you unless the author asks.
 - Encoding (MB105 error): UTF-8 is required, and the build stops on any other encoding. Find the real encoding (`file -i ch.md`), convert (`iconv -f WINDOWS-1252 -t UTF-8 ch.md > ch.tmp && mv ch.tmp ch.md`, with the encoding the file actually has), and check that accented letters read correctly. A byte order mark and CRLF line endings are handled (info only); leave them.
@@ -524,7 +526,7 @@ mdbindery recognizes an mdBook (MB130): a `book.toml` in the book folder or the 
    | `images` | `IMAGE missing: ...`, `IMAGE remote: ...`, `IMAGE outside: ...` | step 8 |
    | `charts` | `CHART in ... failed to render` | step 10 |
    | `includes` | `INCLUDE in ... not expanded (...)` | step 13 |
-   | `navigation` | `NAVIGATION: EPUB/text/chNNN.xhtml: page title is 'chNNN.xhtml'` or `NAVIGATION: EPUB/toc.ncx: entry N has no label` | a heading with no text: give it one |
+   | `navigation` | `NAVIGATION: EPUB/text/chNNN.xhtml: page title is 'chNNN.xhtml'`, `NAVIGATION: EPUB/toc.ncx: entry N has no label`, or a landmark, guide or cover line such as `NAVIGATION: EPUB/nav.xhtml: landmark cover has no label` | a heading with no text: give it one; a landmark, guide or cover line: rebuild with the current mdbindery, and report it if it stays |
    | `epubcheck` | the message id and the path inside the EPUB (`EPUB/text/chNNN.xhtml`; with one `#` heading per file and `split_level: 1`, `ch001` is the first file of the reading order); `NOT RUN` means no Java 11+ | fix the source at that place; `mdbindery install-tools` for Java |
    | `ace` | `dist/reports/ace/report.html` | fix the source (alt text, headings, language); waive a rule in `ace_waivers` only with approval |
    | `wordcount` | `word count: FAILED: ... FILE A -> B words (+x%)` | text was lost (negative) or duplicated (positive): run `mdbindery build --keep-work`, compare `kNN.md` in the printed folder (the prepared source of the file with key `kNN`) with the chapter in the EPUB; usual causes are unclosed HTML, a tag that swallows text, or HTML around Markdown |

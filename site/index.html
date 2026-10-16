@@ -521,7 +521,7 @@ mdbindery build ./my-book --format pdf</code></pre>
               <span class="gate-name">navigation · EPUB</span>
               <span class="badge badge-pass">Gate</span>
             </div>
-            <p>Checks the finished EPUB: fails when a page has no title or is titled with a file name, or an entry in the contents or the NCX has no label; a heading that really reads like a file name passes. EPUBCheck and Ace check neither. Never skipped.</p>
+            <p>Checks the finished EPUB: fails when a page has no title or is titled with a file name, when an entry in the contents, the NCX, the landmarks or the guide has no label or a landmark or guide label is not the one the book's language or options give, when the NCX names a cover that is not in the manifest, or when the cover image has no text alternative; a heading that really reads like a file name passes. EPUBCheck and Ace check neither. Never skipped.</p>
           </div>
 
           <div class="gate-card">
