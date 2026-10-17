@@ -71,7 +71,7 @@ The installers put the `mdbindery` command in `~/.local/bin` (Windows: `%USERPRO
 mdbindery looks for its tools in `MDBINDERY_HOME` on every run, not only during installation. If you installed with a custom `MDBINDERY_HOME` and a new terminal does not have it set, mdbindery looks in the default folder and finds nothing there:
 
 ```
-mdbindery 0.2.0
+mdbindery 0.2.1
 tool home: .../.local/share/mdbindery (default; set MDBINDERY_HOME to use another)
 --- tools
 pandoc     missing

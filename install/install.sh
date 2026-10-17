@@ -7,6 +7,7 @@
 # Options:
 #   --local PATH        install mdbindery from a local folder instead of GitHub
 #   --ref REF           branch, tag, or commit on GitHub (default: main)
+#   --extras LIST       optional Python extras, comma-separated (pdf for PDF export)
 #   --no-node           skip Node.js, mermaid-cli, and Ace (charts become placeholders, no Ace check)
 #   --java MODE         auto (default: download a Java runtime only if none >= 11), always, never
 #   --no-tools          install the mdbindery command only
@@ -23,6 +24,7 @@ UV_VERSION=0.12.19
 REPO=https://github.com/sagol/mdbindery
 REF=main
 LOCAL=''
+EXTRAS=''
 TOOLS_ARGS=()
 NO_TOOLS=0
 UNINSTALL=0
@@ -36,6 +38,7 @@ mdbindery installer for Linux and macOS
 
   --local PATH     install from a local folder instead of GitHub
   --ref REF        branch, tag, or commit on GitHub (default: main)
+  --extras LIST    optional Python extras, comma-separated (pdf for PDF export)
   --no-node        skip Node.js, mermaid-cli, and Ace (charts become placeholders, no accessibility check)
   --java MODE      auto (default), always, never
   --no-tools       install the mdbindery command only
@@ -47,9 +50,9 @@ USAGE
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --local|--ref)
+    --local|--ref|--extras)
       if [[ $# -lt 2 || "$2" == -* ]]; then echo "$1 needs a value" >&2; exit 2; fi
-      if [[ "$1" == --local ]]; then LOCAL="$2"; else REF="$2"; fi
+      case "$1" in --local) LOCAL="$2" ;; --ref) REF="$2" ;; *) EXTRAS="$2" ;; esac
       shift 2 ;;
     --no-node) TOOLS_ARGS+=(--no-node); shift ;;
     --java)
@@ -63,8 +66,22 @@ while [[ $# -gt 0 ]]; do
 done
 
 say() { printf '%s\n' "$*"; }
+urlencode_path() {   # every byte of a path percent-encoded except unreserved characters and slashes, for a file:// URL
+  local LC_ALL=C s="$1" out='' c i
+  for (( i = 0; i < ${#s}; i++ )); do
+    c="${s:i:1}"
+    case "$c" in
+      [a-zA-Z0-9/._~-]) out+="$c" ;;
+      *) printf -v c '%%%02X' "'$c"; out+="$c" ;;
+    esac
+  done
+  printf '%s' "$out"
+}
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 
+if [[ -n "$EXTRAS" && ! "$EXTRAS" =~ ^[a-z][a-z0-9_-]*(,[a-z][a-z0-9_-]*)*$ ]]; then
+  echo "error: --extras takes names separated by commas, such as pdf" >&2; exit 2
+fi
 if [[ -n "$LOCAL" && ! -f "$LOCAL/pyproject.toml" ]]; then
   echo "error: --local needs the mdbindery source folder (with pyproject.toml): $LOCAL" >&2; exit 2
 fi
@@ -119,12 +136,14 @@ if [[ -z "$UV" ]]; then
   UV="$MDBINDERY_HOME/uv/uv"
 fi
 
+NAME="mdbindery${EXTRAS:+[$EXTRAS]}"
 if [[ -n "$LOCAL" ]]; then
-  SPEC="$(cd "$LOCAL" && pwd)"
+  SOURCE="$(cd "$LOCAL" && pwd)"
+  SPEC="$NAME @ file://$(urlencode_path "$SOURCE")"
 else
-  SPEC="mdbindery @ $REPO/archive/$REF.zip"
+  SPEC="$NAME @ $REPO/archive/$REF.zip"
 fi
-say "installing mdbindery from ${LOCAL:-$REPO@$REF}"
+say "installing $NAME from ${LOCAL:-$REPO@$REF}"
 LOG=$(mktemp)
 if ! "$UV" tool install --force --python 3.12 "$SPEC" >"$LOG" 2>&1; then
   cat "$LOG" >&2; rm -f "$LOG"; die "uv could not install mdbindery"

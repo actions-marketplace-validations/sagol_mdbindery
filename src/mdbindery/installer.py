@@ -40,7 +40,8 @@ NODE = {
     ('win', 'x64'): ('node-v24.21.0-win-x64.zip', '158f7685b44de51f6c0df1d153526cbcd3e1bc739a8dfc607721cef75de9e541'),
     ('win', 'arm64'): ('node-v24.21.0-win-arm64.zip', '8779b1bde1d39f8d420e3b57aa657b39891af434d3de44a919044cec06785921'),
 }
-NPM_PACKAGES = ['@mermaid-js/mermaid-cli@12.0.0', '@daisy/ace@1.4.6']
+# yauzl: Puppeteer 25 and later unzip their browser with it where no unzip command is installed (a minimal Linux)
+NPM_PACKAGES = ['@mermaid-js/mermaid-cli@12.0.0', '@daisy/ace@1.4.6', 'yauzl@3.2.0']
 JRE_MAJOR = 21
 
 
@@ -310,6 +311,11 @@ def install_npm_packages(force=False):
                     raise RuntimeError(f'npm did not install {pkg}')
         _swap_in(staged, prefix, has_packages)
         tools.clear_cache()
+    # a build folder an interrupted download left without its executable makes Puppeteer refuse to install it again
+    for folder in sorted(tools.puppeteer_cache().glob('chrome-headless-shell/*')):
+        if folder.is_dir() and not any(folder.glob('chrome-headless-shell-*/chrome-headless-shell*')):
+            say(f'removing an incomplete headless Chrome download: {folder.name}')
+            shutil.rmtree(folder, ignore_errors=True)
     # every Puppeteer copy fetches the headless Chrome build it expects
     node = tools.find('node')
     for pkg in sorted(tools.npm_modules_dir().rglob('node_modules/puppeteer/package.json')):
@@ -445,7 +451,9 @@ def _install_all(no_node, jre, force):
                 install_node(tmp, force)
                 install_npm_packages(force)
             except Exception as e:  # noqa: BLE001
-                optional_failed.append(str(e).split('\n')[0][:300])
+                lines = [line.strip() for line in str(e).split('\n') if line.strip()]
+                cause = next((line for line in reversed(lines) if line.startswith('Error')), lines[-1] if lines else '')
+                optional_failed.append(lines[0][:300] + (f' ({cause[:300]})' if cause and cause != lines[0] else '') if lines else 'unknown error')
                 say(f'warning: Node.js tools not installed: {optional_failed[-1]}')
                 say('  charts become placeholders, Ace and preview are unavailable; run install-tools again later')
     tools.puppeteer_config()

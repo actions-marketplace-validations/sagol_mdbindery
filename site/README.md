@@ -1,6 +1,6 @@
 # mdbindery site
 
-Static landing page and technical reference for `mdbindery` (`v0.2.0`, with EPUB and optional PDF export). Includes search metadata, coding-agent resources, and deployment helpers in `site/`.
+Static landing page and technical reference for `mdbindery` (`v0.2.1`, with EPUB and optional PDF export). Includes search metadata, coding-agent resources, and deployment helpers in `site/`.
 
 ## Files
 
