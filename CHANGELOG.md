@@ -1,7 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.2.1 (2026-10-17)
 
+- `install.sh --extras pdf` installs PDF export's Python extra with mdbindery, from GitHub or with `--local`; other extras work the same way. A `--local` path is passed to uv as a fully encoded file URL, so spaces, `%`, `#`, `?` and non-ASCII names work.
+- On a minimal Linux without `unzip`, `install-tools` now installs the headless Chrome that Puppeteer 25 and later need: it installs `yauzl` with the other npm tools, removes a browser folder an interrupted download left incomplete, and names the cause when the Node.js tools fail.
+- The installation guide lists the libraries a clean Ubuntu 24.04 server lacks for headless Chrome and gives the AppArmor profile that lets Chrome's sandbox start on Ubuntu 23.10 and later, so charts and PDF export run with the sandbox on. It also explains calling `~/.local/bin/mdbindery` by its full path in a shell that reads no profile.
+- The README and the agent resources say which skills folder each agent host reads, and what to do when mdbindery's link comes with links to other book tools, some private.
 - EPUB landmarks, guide and cover: the landmarks list labels the cover and the title page, and the guide its cover entry, in the book's language (`Обложка`, `Титульный лист` for `lang: ru`), and both label the contents by `options.toc_title`; new `options.cover_title` and `options.title_page_title` set them for other languages, and the build warns when they are missing. The older NCX names the manifest's cover image instead of a missing `cover_jpg`, and the cover image gets a text alternative. The `navigation` gate now checks all of these.
 - Every list of the EPUB gates names `navigation`: the `mdbindery` skill's description, the README, the CLI help, the docs and the documentation site; the gate test also checks the skill description, the site's gate cards and the numbered gate list for agents.
 - The `mdbindery` and `mdbindery-prepare-repo` skills list the `navigation` gate, and the `mdbindery` skill says what heads and titles the contents page (`options.toc_title`); a test now checks that every gate the build runs is in both skills and in `docs/building.md`.

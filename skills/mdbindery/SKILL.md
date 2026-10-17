@@ -26,11 +26,11 @@ curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/main/install/instal
 irm https://raw.githubusercontent.com/sagol/mdbindery/main/install/install.ps1 | iex
 ```
 
-The installer needs nothing preinstalled and no admin rights. It fetches uv, installs mdbindery in an isolated environment (with its own Python 3.12 if needed), then runs `mdbindery install-tools`. That downloads pandoc 3.11, EPUBCheck 5.4.0, Node.js, mermaid-cli, and Ace with headless Chrome, plus a Java runtime when no Java 11 or newer is found. It needs the mdbindery repository on GitHub to be public.
+The installer needs only bash, curl, and tar, and no admin rights. It fetches uv, installs mdbindery in an isolated environment (with its own Python 3.12 if needed), then runs `mdbindery install-tools`. That downloads pandoc 3.11, EPUBCheck 5.4.0, Node.js, mermaid-cli, and Ace with headless Chrome, plus a Java runtime when no Java 11 or newer is found. It needs the mdbindery repository on GitHub to be public. On a minimal Linux, the headless Chrome needs system libraries, and Ubuntu 23.10 and later need an AppArmor profile for its sandbox; both need root once (see `docs/installation.md`, "Headless Chrome"). Call `~/.local/bin/mdbindery` by its full path in a shell that reads no profile (`ssh host command`, or an agent shell started before that folder existed).
 
 - The command goes to `~/.local/bin` (`%USERPROFILE%\.local\bin` on Windows; set `MDBINDERY_BIN` to change it). If the shell cannot find `mdbindery`, add that folder to `PATH`; the Windows installer adds it to the user `PATH` itself.
 - The tools go to the tool home: `~/.local/share/mdbindery` on Linux, `~/Library/Application Support/mdbindery` on macOS, `%LOCALAPPDATA%\mdbindery` on Windows. Set `MDBINDERY_HOME` to use another folder, and keep it set afterwards: mdbindery finds its tools only there. The installer prints the line to add to your profile.
-- `install.sh` options: `--no-node` (no Node.js, mermaid-cli, or Ace: charts become placeholders, no accessibility check, no `preview`), `--java auto|always|never`, `--no-tools` (command only), `--local PATH` (install from a checkout), `--ref REF` (branch, tag, or commit), `--uninstall`, `--help`. PowerShell: `-NoNode`, `-Java`, `-NoTools`, `-Local`, `-Ref`, `-Uninstall`. Pass options through the pipe with `curl -fsSL .../install.sh | bash -s -- --no-node`.
+- `install.sh` options: `--no-node` (no Node.js, mermaid-cli, or Ace: charts become placeholders, no accessibility check, no `preview`), `--java auto|always|never`, `--no-tools` (command only), `--local PATH` (install from a checkout), `--ref REF` (branch, tag, or commit), `--extras pdf` (PDF export), `--uninstall`, `--help`. PowerShell: `-NoNode`, `-Java`, `-NoTools`, `-Local`, `-Ref`, `-Uninstall`. Pass options through the pipe with `curl -fsSL .../install.sh | bash -s -- --no-node`.
 - Update mdbindery: run the installer again. Add or repair tools: `mdbindery install-tools [--no-node] [--java auto|always|never] [--force]`. `install-tools` exits with 1 when pandoc or EPUBCheck is still missing; Node.js, mermaid-cli, and Ace failures are only warnings.
 - The full install takes about 1.5 GB; with `--no-node`, about 370 MB including uv and Python (measured sizes are in `docs/installation.md`). Building works offline afterwards.
 - Other channels install the same command; run `mdbindery install-tools` after them: `pipx install mdbindery` or `uv tool install mdbindery` (PyPI), `brew install sagol/tap/mdbindery` (Homebrew). Pin with `mdbindery==X.Y.Z`, or with `--ref vX.Y.Z` on the installer taken from that tag.
@@ -46,7 +46,7 @@ mdbindery doctor
 `doctor` prints the version, the tool home, and one line per tool:
 
 ```
-mdbindery 0.2.0
+mdbindery 0.2.1
 tool home: /home/you/.local/share/mdbindery (default; set MDBINDERY_HOME to use another)
 --- tools
 pandoc     pandoc 3.11

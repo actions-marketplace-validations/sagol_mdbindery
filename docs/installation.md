@@ -65,8 +65,8 @@ When the installer finishes, open a new terminal and run `mdbindery doctor` (see
 The commands above install the latest code on `main`. To install a release, take the installer from its tag and pass the same tag as `--ref` (`-Ref` on Windows):
 
 ```
-curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/v0.2.0/install/install.sh | bash -s -- --ref v0.2.0
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/sagol/mdbindery/v0.2.0/install/install.ps1))) -Ref v0.2.0
+curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/v0.2.1/install/install.sh | bash -s -- --ref v0.2.1
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/sagol/mdbindery/v0.2.1/install/install.ps1))) -Ref v0.2.1
 ```
 
 The installers never ask questions and exit with a non-zero status when a step fails, so they can run unattended in provisioning scripts and CI.
@@ -81,7 +81,7 @@ Every channel installs the same `mdbindery` command. The external tools always c
 | PyPI with uv | `uv tool install mdbindery` | `uv tool upgrade mdbindery` |
 | PyPI with pip | `python -m pip install mdbindery` (in a virtual environment) | `python -m pip install -U mdbindery` |
 | Homebrew (macOS, Linux) | `brew install sagol/tap/mdbindery` | `brew upgrade mdbindery` |
-| A release's files | the wheel or source archive from the [releases page](https://github.com/sagol/mdbindery/releases): `pipx install ./mdbindery-0.2.0-py3-none-any.whl` | install the newer file |
+| A release's files | the wheel or source archive from the [releases page](https://github.com/sagol/mdbindery/releases): `pipx install ./mdbindery-0.2.1-py3-none-any.whl` | install the newer file |
 
 After any of these, run:
 
@@ -90,7 +90,7 @@ mdbindery install-tools
 mdbindery doctor
 ```
 
-To pin a version: `pipx install mdbindery==0.2.0`, `uv tool install mdbindery==0.2.0`.
+To pin a version: `pipx install mdbindery==0.2.1`, `uv tool install mdbindery==0.2.1`.
 
 ### GitHub Actions
 
@@ -102,7 +102,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: sagol/mdbindery@v0.2.0
+      - uses: sagol/mdbindery@v0.2.1
       - run: mdbindery check . --build
       - run: mdbindery build
       - uses: actions/upload-artifact@v4
@@ -126,9 +126,9 @@ The output `home` is the tool home (`$RUNNER_TOOL_CACHE/mdbindery`). The build's
 
 1. They pick the folders. The tool home is `MDBINDERY_HOME`, or the per-system default listed under [Environment variables](#environment-variables). The `mdbindery` command goes to `MDBINDERY_BIN`, by default `~/.local/bin` (Windows: `%USERPROFILE%\.local\bin`). Both folders are created if they do not exist.
 2. They get uv. If `uv` is on `PATH`, or a copy from an earlier run is in `<tool home>/uv/`, that copy is used. Otherwise the installer downloads [uv](https://github.com/astral-sh/uv) 0.12.19 from its GitHub releases, compares the SHA-256 of the archive with the value written in the script, stops on a mismatch, and puts the binary in `<tool home>/uv/`.
-3. They install mdbindery in an isolated environment. The installer points uv at the tool home (`UV_TOOL_DIR=<tool home>/uv-tools`, `UV_PYTHON_INSTALL_DIR=<tool home>/python`, `UV_TOOL_BIN_DIR=<bin folder>`) and runs `uv tool install --force --python 3.12` on either the local folder (`--local`) or `https://github.com/sagol/mdbindery/archive/<ref>.zip`, so git is not needed. uv uses a Python 3.12 already on the machine or downloads one into `<tool home>/python`, creates a private environment with mdbindery, PyYAML, and Pillow, and links the `mdbindery` command into the bin folder. uv's output is shown only when it fails, followed by `uv could not install mdbindery`.
+3. They install mdbindery in an isolated environment. The installer points uv at the tool home (`UV_TOOL_DIR=<tool home>/uv-tools`, `UV_PYTHON_INSTALL_DIR=<tool home>/python`, `UV_TOOL_BIN_DIR=<bin folder>`) and runs `uv tool install --force --python 3.12` on either the local folder (`--local`) or `https://github.com/sagol/mdbindery/archive/<ref>.zip`, so git is not needed. With `--extras pdf` it installs `mdbindery[pdf]` instead, which adds pypdf for PDF export. uv uses a Python 3.12 already on the machine or downloads one into `<tool home>/python`, creates a private environment with mdbindery, PyYAML, and Pillow, and links the `mdbindery` command into the bin folder. uv's output is shown only when it fails, followed by `uv could not install mdbindery`.
 4. They run `mdbindery install-tools` (skipped with `--no-tools`), described in the next section. The Windows installer always passes `--java` with the chosen mode (default `auto`). If `install-tools` fails, the installer stops with its error.
-5. They check `PATH`. On Linux and macOS, if the bin folder is not on `PATH`, the installer prints the line to add to your shell profile; it does not edit profile files. On Windows it adds the bin folder to the user `PATH` (the value is kept unexpanded, so entries such as `%USERPROFILE%\bin` stay as they are) and prints `added <folder> to your user PATH (open a new terminal to use it)`.
+5. They check `PATH`. On Linux and macOS, if the bin folder is not on `PATH`, the installer prints the line to add to your shell profile; it does not edit profile files. A shell that reads no profile, such as a command run with `ssh host command` or an agent's tool shell started before `~/.local/bin` existed, still lacks it: call `~/.local/bin/mdbindery` by its full path there. On Windows it adds the bin folder to the user `PATH` (the value is kept unexpanded, so entries such as `%USERPROFILE%\bin` stay as they are) and prints `added <folder> to your user PATH (open a new terminal to use it)`.
 6. When the tool home is not the default one, they print the line that sets `MDBINDERY_HOME` permanently, because every later `mdbindery` command must find the same tool home.
 
 A run of `install.sh` from a checkout with a custom tool home and bin folder (paths shortened):
@@ -187,7 +187,7 @@ Every archive is unpacked safely: an entry whose path or link target would land 
 
 Updates are transactional. Each component is unpacked into a staging folder next to its final place (`tools/.staging-pandoc`), started once to prove it runs (`pandoc --version`, `java -version`, `node --version`; for EPUBCheck, its jar must be there; for the npm packages, both must be installed), and only then swapped in. The previous version waits as `tools/.old-<name>` until the new one passes, so a failed download, extraction, or check leaves the working version in place with its marker, and the next `install-tools` starts clean. One `install-tools` runs at a time per tool home: a second one stops with `another \`mdbindery install-tools\` is running (lock file .../tools/.install.lock)`. A lock file older than three hours counts as abandoned; delete it yourself if an install was killed.
 
-Exit status: 0 when pandoc and EPUBCheck work afterwards; 1 when either is missing (`required tools are missing: ...`, for example with `--java never` and no Java); 2 when a required step failed (the message starts with `install failed:`, for example a download error or a checksum mismatch).
+Exit status: 0 when pandoc and EPUBCheck work afterwards, even when the optional Node.js tools failed (that is a warning naming the cause; check `mermaid` and `ace` in `mdbindery doctor`); 1 when either is missing (`required tools are missing: ...`, for example with `--java never` and no Java); 2 when a required step failed (the message starts with `install failed:`, for example a download error or a checksum mismatch).
 
 ## Installer options
 
@@ -195,6 +195,7 @@ Exit status: 0 when pandoc and EPUBCheck work afterwards; 1 when either is missi
 |---|---|---|
 | `--local PATH` | `-Local PATH` | Install mdbindery from a local folder (a checkout) instead of GitHub |
 | `--ref REF` | `-Ref REF` | Branch, tag, or commit to install from GitHub; default `main` |
+| `--extras LIST` | none | Optional Python extras, comma-separated: `pdf` adds PDF export (pypdf). On Windows, install the extra with pip as [PDF installation](pdf.md#install-pdf-dependencies) shows |
 | `--no-node` | `-NoNode` | Skip Node.js, mermaid-cli, Ace, and headless Chrome. Mermaid charts become placeholders (the charts gate warns), the Ace gate warns that accessibility was not checked, and `mdbindery preview` does not work |
 | `--java MODE` | `-Java MODE` | `auto` (default), `always`, or `never`, as described above |
 | `--no-tools` | `-NoTools` | Install only the `mdbindery` command; run `mdbindery install-tools` later |
@@ -306,7 +307,35 @@ mermaid-cli, Ace, and `mdbindery preview` run a headless Chrome build downloaded
 sudo apt install libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libgbm1 libpango-1.0-0 libasound2
 ```
 
-On Ubuntu 24.04 and later, `libasound2` is a virtual package: install `libasound2t64` instead. Other distributions ship the same libraries under similar names.
+On Ubuntu 24.04 several of these were renamed with a `t64` suffix, and `libasound2` is a virtual package. A clean Ubuntu 24.04 server image lacked exactly these:
+
+```
+sudo apt install libasound2t64 libatk1.0-0t64 libatk-bridge2.0-0t64 libatspi2.0-0t64 libgbm1 libxcomposite1 libxdamage1 libxfixes3 libxrandr2
+```
+
+Smaller images may also lack `libnss3`, `libxkbcommon0`, and `libdrm2`. Other distributions ship the same libraries under similar names.
+
+Puppeteer 25 and later unzip the browser they download with an `unzip` command or with the `yauzl` package; `install-tools` installs `yauzl` with the other npm tools, so no `unzip` is needed. A download that stopped midway leaves a folder Puppeteer refuses to reuse; `install-tools` removes such a folder before it installs that build again.
+
+### Ubuntu 23.10 and later: the Chrome sandbox
+
+These releases restrict unprivileged user namespaces, which Chrome's sandbox needs. Without a rule for it, mermaid-cli falls back to running without the sandbox (see below) and PDF export stops with `No usable sandbox!`. To keep the sandbox, allow user namespaces for mdbindery's Chrome builds with an AppArmor profile of the same form Ubuntu ships for Chrome (`/etc/apparmor.d/chrome`), then remove the marker that turned the sandbox off:
+
+```
+sudo tee /etc/apparmor.d/mdbindery-chrome >/dev/null <<PROFILE
+abi <abi/4.0>,
+include <tunables/global>
+
+profile mdbindery-chrome "${MDBINDERY_HOME:-$HOME/.local/share/mdbindery}/tools/puppeteer/chrome-headless-shell/*/chrome-headless-shell-linux64/chrome-headless-shell" flags=(unconfined) {
+  userns,
+  include if exists <local/mdbindery-chrome>
+}
+PROFILE
+sudo apparmor_parser -r /etc/apparmor.d/mdbindery-chrome
+rm -f "${MDBINDERY_HOME:-$HOME/.local/share/mdbindery}/tools/no-sandbox"
+```
+
+`mdbindery doctor` then shows `mermaid    renders PNG` without `(Chrome sandbox off)`, and `build --format pdf` runs with the sandbox. Run the commands again after moving the tool home.
 
 To see exactly what is missing, ask the dynamic linker (Linux x64 path shown):
 
@@ -388,7 +417,7 @@ Building needs no network access: a remote image (`https://...`) is never downlo
 `mdbindery doctor` prints the version, the tool home, and one line per tool. A full install in the default tool home (path shortened):
 
 ```
-mdbindery 0.2.0
+mdbindery 0.2.1
 tool home: .../.local/share/mdbindery (default; set MDBINDERY_HOME to use another)
 --- tools
 pandoc     pandoc 3.11

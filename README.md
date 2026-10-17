@@ -59,9 +59,9 @@ Windows (PowerShell):
 irm https://raw.githubusercontent.com/sagol/mdbindery/main/install/install.ps1 | iex
 ```
 
-The installer needs nothing preinstalled. It fetches [uv](https://github.com/astral-sh/uv), installs mdbindery in an isolated environment (with its own Python if needed), then downloads pandoc, EPUBCheck, a Java runtime if none is present, Node.js, mermaid-cli, and Ace into a per-user folder. pandoc, EPUBCheck, Node.js, and uv are pinned to exact versions and verified against SHA-256 checksums; the Java runtime comes from Eclipse Temurin's API with its published checksum; mermaid-cli and Ace are pinned by version. Nothing needs administrator rights, and nothing asks questions, so the same commands work in scripts and CI.
+The installer needs only bash, curl, and tar. It fetches [uv](https://github.com/astral-sh/uv), installs mdbindery in an isolated environment (with its own Python if needed), then downloads pandoc, EPUBCheck, a Java runtime if none is present, Node.js, mermaid-cli, and Ace into a per-user folder. pandoc, EPUBCheck, Node.js, and uv are pinned to exact versions and verified against SHA-256 checksums; the Java runtime comes from Eclipse Temurin's API with its published checksum; mermaid-cli and Ace are pinned by version. mdbindery itself needs no administrator rights, and nothing asks questions, so the same commands work in scripts and CI. On a minimal Linux, the headless Chrome that renders charts, runs Ace, and exports PDF needs a few system libraries, and on Ubuntu 23.10 and later an AppArmor profile so that its sandbox can start; both need root once. See [Headless Chrome](docs/installation.md#headless-chrome).
 
-To pin a release, pass its tag: `curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/v0.2.0/install/install.sh | bash -s -- --ref v0.2.0`.
+To pin a release, pass its tag: `curl -fsSL https://raw.githubusercontent.com/sagol/mdbindery/v0.2.1/install/install.sh | bash -s -- --ref v0.2.1`. Add `--extras pdf` for PDF export.
 
 Other ways to install:
 
@@ -69,13 +69,13 @@ Other ways to install:
 |---|---|
 | PyPI (pipx, uv, pip) | `pipx install mdbindery` or `uv tool install mdbindery`, then `mdbindery install-tools` |
 | Homebrew (macOS, Linux) | `brew install sagol/tap/mdbindery`, then `mdbindery install-tools` |
-| GitHub Actions | `- uses: sagol/mdbindery@v0.2.0`, then run `mdbindery` in later steps |
+| GitHub Actions | `- uses: sagol/mdbindery@v0.2.1`, then run `mdbindery` in later steps |
 | Release files | wheel, source archive, and both installers on the [releases page](https://github.com/sagol/mdbindery/releases) |
 
 In a workflow:
 
 ```yaml
-- uses: sagol/mdbindery@v0.2.0      # installs mdbindery and its tools, cached between runs
+- uses: sagol/mdbindery@v0.2.1      # installs mdbindery and its tools, cached between runs
 - run: mdbindery build path/to/book  # exit 1 when a gate fails
 ```
 
@@ -141,7 +141,9 @@ The [documentation site](https://sagol.github.io/mdbindery/) brings together ins
 
 The site provides a [documentation index](https://sagol.github.io/mdbindery/llms.txt), a [full technical reference](https://sagol.github.io/mdbindery/llms-full.txt), and a [JSON capability manifest](https://sagol.github.io/mdbindery/agents.json) for coding agents.
 
-[`skills/mdbindery-prepare-repo/SKILL.md`](https://github.com/sagol/mdbindery/blob/main/skills/mdbindery-prepare-repo/SKILL.md) teaches an LLM agent (Claude Code, Codex, Cursor, and similar) how to restructure a repository for mdbindery and loop on `mdbindery check` until it is clean. [`skills/mdbindery/SKILL.md`](https://github.com/sagol/mdbindery/blob/main/skills/mdbindery/SKILL.md) covers running the tool: installing, checking, building, previewing, and reading the reports. Both are plain Markdown and can be copied into any agent's skill or rules folder.
+[`skills/mdbindery-prepare-repo/SKILL.md`](https://github.com/sagol/mdbindery/blob/main/skills/mdbindery-prepare-repo/SKILL.md) teaches an LLM agent (Claude Code, Codex, Cursor, and similar) how to restructure a repository for mdbindery and loop on `mdbindery check` until it is clean. [`skills/mdbindery/SKILL.md`](https://github.com/sagol/mdbindery/blob/main/skills/mdbindery/SKILL.md) covers running the tool: installing, checking, building, previewing, and reading the reports. Both are plain Markdown and can be copied into any agent's skill or rules folder. To use a skill, copy its folder into the agent's skills folder: `~/.claude/skills/` for Claude Code, `~/.agents/skills/` for Codex and Gemini CLI, `~/.gemini/antigravity-cli/skills/` for Antigravity CLI.
+
+If an author gave you mdbindery's link together with links to other book tools, and some of those repositories are private, mdbindery is one part of a larger toolset. Ask the author for GitHub access to the private repositories (`gh auth login`, or a read-only token), then follow the setup guide in that toolset's main repository; it installs mdbindery with this installer at a pinned release.
 
 ## Credits
 
