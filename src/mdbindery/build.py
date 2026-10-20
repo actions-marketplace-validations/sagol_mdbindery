@@ -987,7 +987,7 @@ def build(cfg, out_dir=None, run_ace=True, keep_work=False, log=print, analysis=
             gate, browser = pdf.render(cfg, a, work, css, embed_cover, artifact, str(date), log, runtime=pdf_runtime)
             summary.update(pdf=str(artifact), cover=str(store_cover))
             summary['provenance'].update(browser)
-            summary['gates']['pdf'] = gate
+            summary['gates']['pdf'] = gate   # the words, with the outline, front matter and metadata as its parts
             log(f'  built {artifact} ({artifact.stat().st_size // 1024} KB)')
             done('pdf')
         else:
