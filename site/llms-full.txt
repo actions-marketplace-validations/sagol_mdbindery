@@ -29,7 +29,7 @@ Conversions:
 
 ## Setting up mdbindery as part of a larger book toolset
 
-If an author gave you mdbindery's link together with links to other book tools, and some of those repositories are private, mdbindery is one part of a larger toolset. Ask the author for GitHub access to the private repositories (`gh auth login`, or a read-only token), then follow the setup guide in that toolset's main repository; it installs mdbindery with this installer at a pinned release.
+If an author gave you mdbindery's link together with links to other book tools, and some of those repositories are private, mdbindery is one part of a larger toolset. Its main repository's setup guide installs everything, mdbindery included, with this installer at a pinned release; for the book toolset that is Mdnarra's `docs/SETUP.md`. Read it with the author's read-only token (for example in `~/.github-token`) without exposing it: never put a token in a URL, a command's arguments, a file you create, or a message. In bash or zsh, with gh: `unset GH_TOKEN GITHUB_TOKEN GH_HOST; gh auth login --with-token < ~/.github-token; gh api repos/sagol/Mdnarra/contents/docs/SETUP.md -H 'Accept: application/vnd.github.raw'`. Without gh, not under `set -e`: `read -r T < ~/.github-token; printf 'Authorization: Bearer %s\n' "$T" | curl -fsS --header @- -H 'Accept: application/vnd.github.raw' https://api.github.com/repos/sagol/Mdnarra/contents/docs/SETUP.md; unset T`. The README's "Setting up the whole book toolset" section has the details, including the environment-only recipe for git.
 
 ## 2. Installation and companion tools
 
