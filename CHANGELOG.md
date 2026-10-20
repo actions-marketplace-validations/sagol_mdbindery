@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- The README and the agent index name `~/.gemini/config/skills/` as Antigravity CLI's skills folder, the one agy 1.4.0 reads; it moves an older `~/.gemini/antigravity-cli/skills/` there only while the new folder does not exist.
+
 ## 0.2.1 (2026-10-17)
 
 - `install.sh --extras pdf` installs PDF export's Python extra with mdbindery, from GitHub or with `--local`; other extras work the same way. A `--local` path is passed to uv as a fully encoded file URL, so spaces, `%`, `#`, `?` and non-ASCII names work.

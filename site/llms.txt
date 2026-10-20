@@ -55,7 +55,7 @@ mdbindery preview dist/writing-a-book-in-markdown.epub shots
 - [Run mdbindery skill (SKILL.md)](https://raw.githubusercontent.com/sagol/mdbindery/main/skills/mdbindery/SKILL.md): Install, run `doctor`, `check`, `init`, `build`, `preview`, parse JSON reports (`dist/reports/build.json`), and interpret gates and exit codes.
 - [Prepare repository skill (SKILL.md)](https://raw.githubusercontent.com/sagol/mdbindery/main/skills/mdbindery-prepare-repo/SKILL.md): Restructure Markdown repository or mdBook to resolve `MB001`–`MB904` findings while keeping GitHub rendering intact.
 
-To use a skill, copy its folder into the agent's skills folder: `~/.claude/skills/` for Claude Code, `~/.agents/skills/` for Codex and Gemini CLI, `~/.gemini/antigravity-cli/skills/` for Antigravity CLI.
+To use a skill, copy its folder into the agent's skills folder: `~/.claude/skills/` for Claude Code, `~/.agents/skills/` for Codex and Gemini CLI, `~/.gemini/config/skills/` for Antigravity CLI.
 
 If an author gave you mdbindery's link together with links to other book tools, and some of those repositories are private, mdbindery is one part of a larger toolset. Ask the author for GitHub access to the private repositories (`gh auth login`, or a read-only token), then follow the setup guide in that toolset's main repository; it installs mdbindery with this installer at a pinned release.
 
