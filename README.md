@@ -2,6 +2,8 @@
 
 [Website and documentation](https://sagol.github.io/mdbindery/)
 
+> **Setting up mdbindery with Mdnarra and mdeditorial, which are private?** Read [Setting up the whole book toolset](#setting-up-the-whole-book-toolset) before you touch the token. The token never goes in a command's arguments: no `curl -H "Authorization: …"`, no `git -c http.extraHeader=…`, no `grep "$TOKEN"`, since every process on the machine can read arguments. Give it to curl on standard input (`--header @-`), to git through its environment, and check for a leak with the section's check, which takes its patterns (the token and the encoded header) from the token's file. With the token in git's environment, don't print git's settings (`git config --get-regexp http` shows the header).
+
 Build EPUB 3 ebooks or paginated PDFs from a folder or GitHub repository of Markdown chapters.
 
 mdbindery is built for books written the GitHub way: one Markdown file per chapter, relative links between files, images in the repository, citations as `[1]` with reference definitions. The source stays readable on GitHub. Both formats share chapter preparation and source checks. EPUB builds check page titles and contents labels, run EPUBCheck and DAISY Ace, and compare word counts; PDF builds check rendered resources, links and extracted text.
@@ -175,7 +177,15 @@ export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.https://github.com/.extraheader
 export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
 ```
 
-Then follow the guide from its first step.
+Then follow the guide from its first step. To check afterwards that no file holds the token, take the pattern from its file, never from a variable on the command line:
+
+```bash
+T="$(cat ~/.github-token)"                      # the token itself, and the encoded header git's environment carries
+{ printf '%s\n' "$T"; printf 'x-access-token:%s' "$T" | base64 -w0 | tr -d =; echo; } |
+  grep -rlF -f - ~/src ~/.local/share; s=$?   # files that hold either are listed; status 2 is an error
+unset T
+[ $s -eq 1 ] && echo "no file holds the token"; [ $s -gt 1 ] && echo "the check did not finish: see the errors above"
+```
 
 ## Credits
 
