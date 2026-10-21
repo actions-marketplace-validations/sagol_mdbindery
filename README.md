@@ -2,6 +2,8 @@
 
 [Website and documentation](https://sagol.github.io/mdbindery/)
 
+> **Setting up mdbindery with Mdnarra and mdeditorial, which are private?** Read [Setting up the whole book toolset](#setting-up-the-whole-book-toolset) before you touch the token. The token never goes in a command's arguments: no `curl -H "Authorization: …"`, no `git -c http.extraHeader=…`, no `grep "$TOKEN"`, since every process on the machine can read arguments. Give it to curl on standard input (`--header @-`), to git through its environment, and check for a leak with the section's check, which takes its patterns (the token and the encoded header) from the token's file. With the token in git's environment, don't print git's settings (`git config --get-regexp http` shows the header).
+
 Build EPUB 3 ebooks or paginated PDFs from a folder or GitHub repository of Markdown chapters.
 
 mdbindery is built for books written the GitHub way: one Markdown file per chapter, relative links between files, images in the repository, citations as `[1]` with reference definitions. The source stays readable on GitHub. Both formats share chapter preparation and source checks. EPUB builds check page titles and contents labels, run EPUBCheck and DAISY Ace, and compare word counts; PDF builds check rendered resources, links and extracted text.
@@ -143,7 +145,47 @@ The site provides a [documentation index](https://sagol.github.io/mdbindery/llms
 
 [`skills/mdbindery-prepare-repo/SKILL.md`](https://github.com/sagol/mdbindery/blob/main/skills/mdbindery-prepare-repo/SKILL.md) teaches an LLM agent (Claude Code, Codex, Cursor, and similar) how to restructure a repository for mdbindery and loop on `mdbindery check` until it is clean. [`skills/mdbindery/SKILL.md`](https://github.com/sagol/mdbindery/blob/main/skills/mdbindery/SKILL.md) covers running the tool: installing, checking, building, previewing, and reading the reports. Both are plain Markdown and can be copied into any agent's skill or rules folder. To use a skill, copy its folder into the agent's skills folder: `~/.claude/skills/` for Claude Code, `~/.agents/skills/` for Codex and Gemini CLI, `~/.gemini/config/skills/` for Antigravity CLI.
 
-If an author gave you mdbindery's link together with links to other book tools, and some of those repositories are private, mdbindery is one part of a larger toolset. Ask the author for GitHub access to the private repositories (`gh auth login`, or a read-only token), then follow the setup guide in that toolset's main repository; it installs mdbindery with this installer at a pinned release.
+### Setting up the whole book toolset
+
+If an author gave you mdbindery's link together with links to other book tools, and some of those repositories are private, mdbindery is one part of a larger toolset. Its main repository's setup guide installs everything, mdbindery included, with this installer at a pinned release. For the book toolset that is [Mdnarra](https://github.com/sagol/Mdnarra)'s `docs/SETUP.md`.
+
+The guide is private too, so read it with the author's read-only token, which the author keeps in a file only they can read, such as `~/.github-token`. Never put a token in a URL, in a command's arguments, in a file you create, or in a message. The commands below are for bash or zsh, as the toolset's setup is (Linux; macOS untested).
+
+The simplest way is gh. It keeps the token in its own store (the system keyring, or on a server without one its `hosts.yml`, readable only by you), the one place the setup guide keeps it too, since the clones need it next. If you don't want gh to keep it after setup, run `gh auth logout`; updates then need the token again:
+
+```bash
+sudo apt-get install -y gh                       # Debian and Ubuntu; elsewhere see https://github.com/cli/cli#installation
+unset GH_TOKEN GITHUB_TOKEN GH_HOST              # inherited ones would take precedence over the author's token or github.com
+gh auth login --with-token < ~/.github-token
+gh api repos/sagol/Mdnarra/contents/docs/SETUP.md -H 'Accept: application/vnd.github.raw'
+```
+
+Without gh, send the header to `curl` on its standard input:
+
+```bash
+read -r T < ~/.github-token                      # a shell builtin: the token is in no process's arguments
+printf 'Authorization: Bearer %s\n' "$T" | curl -fsS --header @- \
+  -H 'Accept: application/vnd.github.raw' https://api.github.com/repos/sagol/Mdnarra/contents/docs/SETUP.md
+unset T
+```
+
+Run it in an ordinary shell, not under `set -e`: for a file without a final newline, `read` sets `T` and then returns non-zero. To clone without gh, give git the token through its environment, for this shell only, as the guide does:
+
+```bash
+GH_TOKEN="$(cat ~/.github-token)"                # the author's file
+export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.https://github.com/.extraheader
+export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+```
+
+Then follow the guide from its first step. To check afterwards that no file holds the token, take the pattern from its file, never from a variable on the command line:
+
+```bash
+T="$(cat ~/.github-token)"                      # the token itself, and the encoded header git's environment carries
+{ printf '%s\n' "$T"; printf 'x-access-token:%s' "$T" | base64 -w0 | tr -d =; echo; } |
+  grep -rlF -f - ~/src ~/.local/share; s=$?   # files that hold either are listed; status 2 is an error
+unset T
+[ $s -eq 1 ] && echo "no file holds the token"; [ $s -gt 1 ] && echo "the check did not finish: see the errors above"
+```
 
 ## Credits
 
